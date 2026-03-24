@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from api.v1.stego import router as stego_router
 
 app = FastAPI(title="Stego API", version="0.1.0")
 
@@ -10,6 +11,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(stego_router)
 
 @app.get("/health")
 async def health_check():
