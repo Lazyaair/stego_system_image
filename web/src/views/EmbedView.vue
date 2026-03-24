@@ -1,0 +1,3 @@
+<template>
+  <div>嵌入页面</div>
+</template>
