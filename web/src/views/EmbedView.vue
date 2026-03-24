@@ -1,43 +1,98 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { stegoApi } from '../api/stego'
+import { ref, onMounted } from 'vue'
+import { stegoApi, type Model } from '../api/stego'
 
-const coverImage = ref<File | null>(null)
-const coverPreview = ref<string>('')
+const models = ref<Model[]>([])
+const selectedModel = ref('')
 const message = ref('')
 const key = ref('')
 const stegoImage = ref<string>('')
 const isLoading = ref(false)
-const isDemo = ref(false)
+const isCheckingCapacity = ref(false)
+const capacityInfo = ref<{ valid: boolean; max_capacity: number; error?: string } | null>(null)
 const error = ref('')
 
-function onFileChange(e: Event) {
-  const target = e.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (file) {
-    coverImage.value = file
-    coverPreview.value = URL.createObjectURL(file)
+onMounted(async () => {
+  try {
+    const res = await stegoApi.getModels()
+    models.value = res.models
+    const defaultModel = res.models.find(m => m.default)
+    if (defaultModel) {
+      selectedModel.value = defaultModel.id
+    }
+  } catch (e: any) {
+    error.value = '获取模型列表失败'
+  }
+})
+
+async function checkCapacity() {
+  const keyCheck = stegoApi.validateKey(key.value)
+  if (!keyCheck.valid) {
+    error.value = keyCheck.error || ''
+    return
+  }
+
+  if (!message.value) {
+    error.value = '请输入秘密消息'
+    return
+  }
+
+  isCheckingCapacity.value = true
+  error.value = ''
+
+  try {
+    const result = await stegoApi.checkCapacity(message.value, key.value, selectedModel.value)
+    capacityInfo.value = result
+    if (!result.valid) {
+      error.value = result.error || '消息超出容量'
+    }
+  } catch (e: any) {
+    error.value = e.response?.data?.detail || '容量检查失败'
+  } finally {
+    isCheckingCapacity.value = false
   }
 }
 
 async function handleEmbed() {
-  if (!coverImage.value || !message.value || !key.value) {
-    error.value = '请填写所有字段'
+  const keyCheck = stegoApi.validateKey(key.value)
+  if (!keyCheck.valid) {
+    error.value = keyCheck.error || ''
+    return
+  }
+
+  if (!message.value) {
+    error.value = '请输入秘密消息'
     return
   }
 
   isLoading.value = true
   error.value = ''
+  stegoImage.value = ''
 
   try {
-    const result = await stegoApi.embed(coverImage.value, message.value, key.value)
-    stegoImage.value = result.stego_image
-    isDemo.value = result.is_demo
+    const result = await stegoApi.embed(message.value, key.value, selectedModel.value)
+    if (result.status === 'success' && result.stego_image) {
+      stegoImage.value = result.stego_image
+    } else {
+      error.value = result.error || '嵌入失败'
+      if (result.max_capacity) {
+        error.value += ` (最大容量: ${result.max_capacity} bytes)`
+      }
+    }
   } catch (e: any) {
-    error.value = e.message || '请求失败'
+    error.value = e.response?.data?.detail || '请求失败'
   } finally {
     isLoading.value = false
   }
+}
+
+function downloadImage() {
+  if (!stegoImage.value) return
+
+  const link = document.createElement('a')
+  link.href = stegoImage.value
+  link.download = 'stego_image.png'
+  link.click()
 }
 </script>
 
@@ -46,44 +101,127 @@ async function handleEmbed() {
     <h1>消息嵌入</h1>
 
     <div class="form-group">
-      <label>选择载体图像</label>
-      <input type="file" accept="image/*" @change="onFileChange" />
-      <img v-if="coverPreview" :src="coverPreview" class="preview" />
+      <label>选择模型</label>
+      <select v-model="selectedModel">
+        <option v-for="m in models" :key="m.id" :value="m.id">
+          {{ m.name }}
+        </option>
+      </select>
     </div>
 
     <div class="form-group">
       <label>秘密消息</label>
-      <textarea v-model="message" rows="3" placeholder="输入秘密消息..."></textarea>
+      <textarea
+        v-model="message"
+        rows="4"
+        placeholder="输入要隐藏的秘密消息..."
+        @blur="checkCapacity"
+      ></textarea>
+      <div v-if="capacityInfo" class="capacity-info" :class="{ invalid: !capacityInfo.valid }">
+        消息长度: {{ message.length }} bytes / 最大容量: {{ capacityInfo.max_capacity }} bytes
+      </div>
     </div>
 
     <div class="form-group">
-      <label>密钥</label>
-      <input type="password" v-model="key" placeholder="输入密钥" />
+      <label>密钥 (1-64 字符)</label>
+      <input
+        type="password"
+        v-model="key"
+        placeholder="输入密钥，用于加密和解密"
+        maxlength="64"
+      />
     </div>
 
-    <button @click="handleEmbed" :disabled="isLoading">
-      {{ isLoading ? '生成中...' : '生成含密图像' }}
-    </button>
+    <div class="actions">
+      <button
+        @click="checkCapacity"
+        :disabled="isCheckingCapacity || !message || !key"
+        class="btn-secondary"
+      >
+        {{ isCheckingCapacity ? '检查中...' : '检查容量' }}
+      </button>
+      <button
+        @click="handleEmbed"
+        :disabled="isLoading || !message || !key"
+        class="btn-primary"
+      >
+        {{ isLoading ? '生成中...' : '生成含密图像' }}
+      </button>
+    </div>
 
     <p v-if="error" class="error">{{ error }}</p>
 
     <div v-if="stegoImage" class="result">
       <h3>生成结果：</h3>
       <img :src="stegoImage" class="preview" />
-      <span v-if="isDemo" class="demo-tag">[演示模式]</span>
+      <button @click="downloadImage" class="btn-download">下载图像</button>
     </div>
   </div>
 </template>
 
 <style scoped>
-.embed-view { max-width: 500px; }
+.embed-view { max-width: 600px; }
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 4px; font-weight: bold; }
-.form-group input, .form-group textarea { width: 100%; padding: 8px; box-sizing: border-box; }
-.preview { max-width: 100%; max-height: 200px; margin-top: 8px; border: 1px solid #ddd; }
-button { padding: 10px 20px; background: #42b883; color: white; border: none; cursor: pointer; }
-button:disabled { background: #ccc; }
-.error { color: red; }
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+.capacity-info {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #666;
+}
+.capacity-info.invalid {
+  color: #e74c3c;
+}
+.preview {
+  max-width: 100%;
+  max-height: 300px;
+  margin-top: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.btn-primary {
+  padding: 12px 24px;
+  background: #42b883;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn-primary:disabled { background: #ccc; }
+.btn-secondary {
+  padding: 12px 24px;
+  background: #fff;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn-secondary:disabled { color: #ccc; }
+.btn-download {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.error { color: #e74c3c; margin-top: 10px; }
 .result { margin-top: 20px; }
-.demo-tag { color: #ff9800; font-size: 14px; }
 </style>
