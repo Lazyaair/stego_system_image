@@ -3,24 +3,33 @@ package com.stegoapp.app.api
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
-import retrofit2.http.Multipart
-import retrofit2.http.POST
-import retrofit2.http.Part
+import retrofit2.http.*
 
 interface StegoApi {
-    @Multipart
+    @GET("/api/v1/stego/models")
+    suspend fun getModels(): Response<ModelsResponse>
+
+    @FormUrlEncoded
+    @POST("/api/v1/stego/capacity")
+    suspend fun checkCapacity(
+        @Field("message") message: String,
+        @Field("key") key: String,
+        @Field("model") model: String
+    ): Response<CapacityResponse>
+
+    @FormUrlEncoded
     @POST("/api/v1/stego/embed")
     suspend fun embed(
-        @Part cover_image: MultipartBody.Part,
-        @Part("secret_message") message: RequestBody,
-        @Part("key") key: RequestBody,
-        @Part("embed_rate") embedRate: RequestBody
+        @Field("message") message: String,
+        @Field("key") key: String,
+        @Field("model") model: String
     ): Response<EmbedResponse>
 
     @Multipart
     @POST("/api/v1/stego/extract")
     suspend fun extract(
         @Part stego_image: MultipartBody.Part,
-        @Part("key") key: RequestBody
+        @Part("key") key: RequestBody,
+        @Part("model") model: RequestBody
     ): Response<ExtractResponse>
 }
