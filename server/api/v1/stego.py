@@ -34,3 +34,20 @@ async def embed_message(
         "stego_image": f"data:image/png;base64,{stego_base64}",
         "is_demo": True
     })
+
+@router.post("/extract")
+async def extract_message(
+    stego_image: UploadFile = File(...),
+    key: str = Form(...)
+):
+    """
+    消息提取接口（演示阶段返回固定消息）
+    """
+    if not stego_image.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="请上传有效的图像文件")
+
+    return JSONResponse(content={
+        "status": "success",
+        "secret_message": "演示提取消息 - Hello from Demo!",
+        "is_demo": True
+    })
