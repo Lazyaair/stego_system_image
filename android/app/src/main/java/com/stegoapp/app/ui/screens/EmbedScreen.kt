@@ -1,18 +1,24 @@
 package com.stegoapp.app.ui.screens
 
+import android.content.ContentValues
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Base64
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.stegoapp.app.api.ApiClient
@@ -20,10 +26,14 @@ import com.stegoapp.app.api.Model
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmbedScreen() {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     var models by remember { mutableStateOf<List<Model>>(emptyList()) }
@@ -259,23 +269,68 @@ fun EmbedScreen() {
             val bytes = Base64.decode(imageData, Base64.DEFAULT)
             val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
 
-            bitmap?.let {
+            bitmap?.let { bmp ->
                 Image(
-                    bitmap = it.asImageBitmap(),
+                    bitmap = bmp.asImageBitmap(),
                     contentDescription = "含密图像",
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(256.dp),
                     contentScale = ContentScale.Fit
                 )
-            }
 
-            Text(
-                text = "提示：长按图像可保存",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray,
-                modifier = Modifier.padding(top = 4.dp)
-            )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = {
+                        scope.launch {
+                            val saved = withContext(Dispatchers.IO) {
+                                saveImageToGallery(context, bmp, "stego_${System.currentTimeMillis()}.png")
+                            }
+                            if (saved) {
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "图像已保存到相册", Toast.LENGTH_SHORT).show()
+                                }
+                            } else {
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "保存失败", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("保存到相册")
+                }
+            }
         }
+    }
+}
+
+private fun saveImageToGallery(context: android.content.Context, bitmap: Bitmap, filename: String): Boolean {
+    return try {
+        val outputStream: OutputStream?
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/StegoApp")
+            }
+            val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+            outputStream = uri?.let { context.contentResolver.openOutputStream(it) }
+        } else {
+            val imagesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+            val stegoDir = File(imagesDir, "StegoApp")
+            if (!stegoDir.exists()) stegoDir.mkdirs()
+            val imageFile = File(stegoDir, filename)
+            outputStream = FileOutputStream(imageFile)
+        }
+        outputStream?.use {
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+        true
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
     }
 }
