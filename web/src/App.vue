@@ -1,37 +1,59 @@
 <script setup lang="ts">
+import { computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { useAuthStore } from './stores/auth'
+import { useChatStore } from './stores/chat'
+import { useContactsStore } from './stores/contacts'
+import { wsClient } from './api/websocket'
+import BottomNav from './components/BottomNav.vue'
+
+const route = useRoute()
+const auth = useAuthStore()
+const chatStore = useChatStore()
+const contactsStore = useContactsStore()
+
+const showNav = computed(() => {
+  const guestRoutes = ['/login', '/register']
+  const fullScreenRoutes = ['/chat/']
+  if (guestRoutes.includes(route.path)) return false
+  if (fullScreenRoutes.some((r) => route.path.startsWith(r))) return false
+  return auth.isAuthenticated
+})
+
+// Connect WebSocket when authenticated
+watch(
+  () => auth.token,
+  (token) => {
+    if (token) {
+      chatStore.setupWsHandlers()
+      wsClient.connect(token)
+      contactsStore.loadContacts()
+    } else {
+      wsClient.disconnect()
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
-  <div class="app">
-    <nav class="nav">
-      <router-link to="/embed">嵌入</router-link>
-      <router-link to="/extract">提取</router-link>
-    </nav>
-    <main class="main">
-      <router-view />
-    </main>
+  <div class="app" :class="{ 'has-nav': showNav }">
+    <router-view />
+    <BottomNav v-if="showNav" />
   </div>
 </template>
 
-<style scoped>
-.app {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
-.nav {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #fff;
 }
-.nav a {
-  text-decoration: none;
-  color: #333;
-  font-weight: bold;
-}
-.nav a.router-link-active {
-  color: #42b883;
+.app.has-nav {
+  padding-bottom: 60px;
 }
 </style>
