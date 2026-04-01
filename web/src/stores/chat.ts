@@ -13,7 +13,7 @@ import { useContactsStore } from './contacts'
 
 export const useChatStore = defineStore('chat', () => {
   const messages = ref<Map<string, Message[]>>(new Map())
-  const pendingRequests = ref<Array<{ userId: string; username: string; message: any }>>([])
+  const pendingRequests = ref<Array<{ userId: string; username: string; messages: any[] }>>([])
 
   async function loadMessages(contactId: string) {
     const msgs = await getMessagesByContact(contactId)
@@ -124,11 +124,20 @@ export const useChatStore = defineStore('chat', () => {
       (c) => c.user_id === payload.from_user_id
     )
     if (!existingContact) {
-      pendingRequests.value.push({
-        userId: payload.from_user_id,
-        username: payload.from_username,
-        message: msg,
-      })
+      const existing = pendingRequests.value.find(r => r.userId === payload.from_user_id)
+      if (existing) {
+        pendingRequests.value = pendingRequests.value.map(r =>
+          r.userId === payload.from_user_id
+            ? { ...r, messages: [...r.messages, msg] }
+            : r
+        )
+      } else {
+        pendingRequests.value = [...pendingRequests.value, {
+          userId: payload.from_user_id,
+          username: payload.from_username,
+          messages: [msg],
+        }]
+      }
       return
     }
 
@@ -216,12 +225,23 @@ export const useChatStore = defineStore('chat', () => {
     })
   }
 
+  let handlersRegistered = false
+
   function setupWsHandlers() {
+    if (handlersRegistered) return
+    handlersRegistered = true
     wsClient.on('chat', handleIncomingChat)
     wsClient.on('ack', handleAck)
     wsClient.on('delivered', handleDelivered)
     wsClient.on('read', handleRead)
     wsClient.on('revoke', handleRevoke)
+    wsClient.on('kicked', handleKicked)
+  }
+
+  function handleKicked() {
+    wsClient.disconnect()
+    // Emit a custom event for App.vue to handle
+    window.dispatchEvent(new CustomEvent('ws-kicked'))
   }
 
   return {

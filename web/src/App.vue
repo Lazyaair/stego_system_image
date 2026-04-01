@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, watch, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import { useChatStore } from './stores/chat'
 import { useContactsStore } from './stores/contacts'
@@ -8,6 +8,7 @@ import { wsClient } from './api/websocket'
 import BottomNav from './components/BottomNav.vue'
 
 const route = useRoute()
+const router = useRouter()
 const auth = useAuthStore()
 const chatStore = useChatStore()
 const contactsStore = useContactsStore()
@@ -19,6 +20,15 @@ const showNav = computed(() => {
   if (fullScreenRoutes.some((r) => route.path.startsWith(r))) return false
   return auth.isAuthenticated
 })
+
+// Handle being kicked by another device
+function onKicked() {
+  auth.onKicked()
+  router.push('/login')
+  alert('You have been logged in on another device.')
+}
+onMounted(() => window.addEventListener('ws-kicked', onKicked))
+onUnmounted(() => window.removeEventListener('ws-kicked', onKicked))
 
 // Connect WebSocket when authenticated
 watch(

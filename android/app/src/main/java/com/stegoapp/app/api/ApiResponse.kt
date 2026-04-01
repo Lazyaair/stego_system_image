@@ -34,3 +34,35 @@ data class ExtractResponse(
     val error: String?,
     val is_demo: Boolean
 )
+
+data class AuthResponse(
+    val user_id: String,
+    val username: String,
+    val token: String
+)
+
+data class UserInfoResponse(
+    val user_id: String,
+    val username: String,
+    val created_at: String? = null
+)
+
+data class InviteCodeResponse(
+    val code: String,
+    val link: String,
+    val created_at: String?
+)
+
+data class InviteLookupResponse(
+    val user_id: String,
+    val username: String
+)
+
+data class AuthRequest(
+    val username: String,
+    val password: String
+)
+
+data class MessageResponse(
+    val message: String
+)

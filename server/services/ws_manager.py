@@ -1,3 +1,4 @@
+import asyncio
 import json
 from fastapi import WebSocket
 
@@ -9,13 +10,26 @@ class ConnectionManager:
 
     async def connect(self, user_id: str, ws: WebSocket):
         await ws.accept()
-        # Close existing connection if any (single device)
+        # Kick existing connection if any (single device)
         old = self.active.get(user_id)
         if old:
             try:
-                await old.close(code=4001, reason="Connected from another device")
+                await old.send_text(json.dumps({
+                    "type": "kicked",
+                    "payload": {"reason": "Logged in on another device"}
+                }))
             except Exception:
                 pass
+
+            # Force close after 5s as backup (in case client doesn't disconnect)
+            async def _force_close():
+                await asyncio.sleep(5)
+                try:
+                    await old.close(code=4001, reason="Connected from another device")
+                except Exception:
+                    pass
+            asyncio.create_task(_force_close())
+
         self.active[user_id] = ws
 
     def disconnect(self, user_id: str, ws: WebSocket):

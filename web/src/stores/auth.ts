@@ -35,5 +35,13 @@ export const useAuthStore = defineStore('auth', () => {
     await clearAllData()
   }
 
-  return { token, user, isAuthenticated, register, login, logout }
+  /** Called when kicked by another device — clear token but keep local data */
+  function onKicked() {
+    token.value = null
+    user.value = null
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+  }
+
+  return { token, user, isAuthenticated, register, login, logout, onKicked }
 })

@@ -12,6 +12,8 @@ import {
   isBlacklisted,
 } from '../db'
 import { lookupCode } from '../api/invite'
+import { wsClient } from '../api/websocket'
+import { useAuthStore } from './auth'
 
 export const useContactsStore = defineStore('contacts', () => {
   const contacts = ref<Contact[]>([])
@@ -37,6 +39,26 @@ export const useContactsStore = defineStore('contacts', () => {
     }
     await saveContact(contact)
     await loadContacts()
+
+    // Notify the other user via WebSocket
+    const auth = useAuthStore()
+    if (auth.user) {
+      wsClient.send({
+        type: 'chat',
+        id: crypto.randomUUID(),
+        timestamp: Math.floor(Date.now() / 1000),
+        payload: {
+          from_user_id: auth.user.user_id,
+          from_username: auth.user.username,
+          to_user_id: info.user_id,
+          content: `${auth.user.username} wants to be your friend`,
+          content_type: 'text',
+          burn_after: 0,
+          is_first_contact: true,
+        },
+      })
+    }
+
     return contact
   }
 

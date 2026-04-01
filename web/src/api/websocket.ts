@@ -40,6 +40,12 @@ class WsClient {
     }
 
     this.ws.onclose = (event) => {
+      if (event.code === 4001) {
+        // Kicked by another device, don't reconnect
+        this.shouldReconnect = false
+        this.emit('_kicked', {})
+        return
+      }
       if (event.code === 4003) {
         // Auth failed, don't reconnect
         this.shouldReconnect = false

@@ -15,40 +15,47 @@ async function accept(index: number) {
   // Save contact
   await contactsStore.acceptContact(req.userId, req.username)
 
-  // Save the pending message into DB
-  const msg = req.message
-  const payload = msg.payload
-  const message: Message = {
-    id: msg.id,
-    contact_id: payload.from_user_id,
-    direction: 'received',
-    content: payload.content,
-    content_type: payload.content_type || 'text',
-    stego_image: payload.stego_image,
-    status: 'delivered',
-    burn_after: payload.burn_after || 0,
-    burned: false,
-    revoked: false,
-    created_at: new Date(msg.timestamp * 1000).toISOString(),
+  // Save all pending messages into DB
+  for (const msg of req.messages) {
+    const payload = msg.payload
+    const message: Message = {
+      id: msg.id,
+      contact_id: payload.from_user_id,
+      direction: 'received',
+      content: payload.content,
+      content_type: payload.content_type || 'text',
+      stego_image: payload.stego_image,
+      status: 'delivered',
+      burn_after: payload.burn_after || 0,
+      burned: false,
+      revoked: false,
+      created_at: new Date(msg.timestamp * 1000).toISOString(),
+    }
+    await saveMessage(message)
   }
-  await saveMessage(message)
   await chatStore.loadMessages(req.userId)
 
   // Remove from pending
-  chatStore.pendingRequests.splice(index, 1)
+  chatStore.pendingRequests = chatStore.pendingRequests.filter(
+    (_: any, i: number) => i !== index
+  )
 
   // Navigate to chat
   router.push(`/chat/${req.userId}`)
 }
 
 async function reject(index: number) {
-  chatStore.pendingRequests.splice(index, 1)
+  chatStore.pendingRequests = chatStore.pendingRequests.filter(
+    (_: any, i: number) => i !== index
+  )
 }
 
 async function block(index: number) {
   const req = chatStore.pendingRequests[index]
   await contactsStore.blockUser(req.userId, req.username)
-  chatStore.pendingRequests.splice(index, 1)
+  chatStore.pendingRequests = chatStore.pendingRequests.filter(
+    (_: any, i: number) => i !== index
+  )
 }
 </script>
 
@@ -69,7 +76,7 @@ async function block(index: number) {
       <div class="avatar">{{ req.username[0].toUpperCase() }}</div>
       <div class="info">
         <div class="name">{{ req.username }}</div>
-        <div class="preview">{{ req.message.payload.content }}</div>
+        <div class="preview">wants to be your friend</div>
       </div>
       <div class="actions">
         <button class="accept-btn" @click="accept(index)">Accept</button>
