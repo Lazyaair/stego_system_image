@@ -116,8 +116,17 @@ export const useChatStore = defineStore('chat', () => {
       created_at: now,
     }
 
+    console.log('[STEGO-DEBUG] sendStegoMessage: saving message', { id, direction: 'sent', contact_id: toUserId, stego_image_len: stegoImage.length })
     await saveMessage(message)
+    const savedMsg = await getMessage(id)
+    console.log('[STEGO-DEBUG] sendStegoMessage: after save, DB has', { id, direction: savedMsg?.direction, has_stego: !!savedMsg?.stego_image })
     await loadMessages(toUserId)
+
+    const wsPayloadSize = JSON.stringify({
+      type: 'chat', id, timestamp: Math.floor(Date.now() / 1000),
+      payload: { from_user_id: auth.user.user_id, to_user_id: toUserId, content_type: 'stego', stego_image: stegoImage }
+    }).length
+    console.log('[STEGO-DEBUG] sendStegoMessage: WS payload size =', wsPayloadSize, 'bytes')
 
     wsClient.send({
       type: 'chat',
@@ -134,10 +143,12 @@ export const useChatStore = defineStore('chat', () => {
         is_first_contact: false,
       },
     })
+    console.log('[STEGO-DEBUG] sendStegoMessage: WS send called, id =', id)
   }
 
   async function handleIncomingChat(msg: any) {
     const payload = msg.payload
+    console.log('[STEGO-DEBUG] handleIncomingChat: received', { id: msg.id, type: msg.type, from: payload.from_user_id, to: payload.to_user_id, content_type: payload.content_type, has_stego: !!payload.stego_image })
     const contactsStore = useContactsStore()
 
     // Check blacklist
@@ -197,8 +208,10 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   async function handleAck(msg: any) {
+    console.log('[STEGO-DEBUG] handleAck: received ack for', msg.id)
     await updateMessageStatus(msg.id, 'sent')
     const stored = await getMessage(msg.id)
+    console.log('[STEGO-DEBUG] handleAck: after update, DB has', { id: msg.id, direction: stored?.direction, content_type: stored?.content_type, has_stego: !!stored?.stego_image })
     if (stored) {
       await loadMessages(stored.contact_id)
     }

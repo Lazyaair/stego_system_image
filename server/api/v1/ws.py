@@ -31,9 +31,11 @@ async def websocket_endpoint(ws: WebSocket, token: str = None):
         # Main message loop
         while True:
             data = await ws.receive_text()
+            print(f"[STEGO-DEBUG] WS received from {user_id}: {len(data)} bytes, type={data[:50]}...")
             try:
                 message = json.loads(data)
             except json.JSONDecodeError:
+                print(f"[STEGO-DEBUG] Invalid JSON from {user_id}")
                 await ws.send_text(json.dumps({
                     "type": "error",
                     "payload": {"message": "Invalid JSON"}
@@ -64,6 +66,10 @@ async def handle_message(from_user_id: str, from_username: str, message: dict):
         if not message.get("timestamp"):
             message["timestamp"] = int(time.time())
 
+        content_type = payload.get("content_type", "text")
+        stego_len = len(payload.get("stego_image", "")) if payload.get("stego_image") else 0
+        print(f"[STEGO-DEBUG] chat from={from_user_id} to={to_user_id} id={message['id']} content_type={content_type} stego_len={stego_len}")
+
         outgoing = {
             "type": "chat",
             "id": message["id"],
@@ -71,15 +77,20 @@ async def handle_message(from_user_id: str, from_username: str, message: dict):
             "payload": payload,
         }
 
+        outgoing_size = len(json.dumps(outgoing))
+        print(f"[STEGO-DEBUG] outgoing message size = {outgoing_size} bytes")
+
         # Send ack to sender
-        await manager.send_to_user(from_user_id, {
+        ack_ok = await manager.send_to_user(from_user_id, {
             "type": "ack",
             "id": message["id"],
             "timestamp": message["timestamp"],
         })
+        print(f"[STEGO-DEBUG] ack to sender {from_user_id}: {'OK' if ack_ok else 'FAILED'}")
 
         # Try to deliver directly
         delivered = await manager.send_to_user(to_user_id, outgoing)
+        print(f"[STEGO-DEBUG] deliver to recipient {to_user_id}: {'OK' if delivered else 'FAILED (queuing)'}")
         if not delivered:
             # Queue for offline delivery
             await enqueue_message(to_user_id, outgoing)

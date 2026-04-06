@@ -43,11 +43,14 @@ class ConnectionManager:
         ws = self.active.get(user_id)
         if ws:
             try:
-                await ws.send_text(json.dumps(message))
+                data = json.dumps(message)
+                await ws.send_text(data)
                 return True
-            except Exception:
+            except Exception as e:
+                print(f"[STEGO-DEBUG] send_to_user FAILED for {user_id}: {type(e).__name__}: {e}")
                 self.disconnect(user_id, ws)
                 return False
+        print(f"[STEGO-DEBUG] send_to_user: {user_id} not online")
         return False
 
     async def broadcast_to_users(self, user_ids: list[str], message: dict):
