@@ -14,6 +14,26 @@ async def get_models():
     return JSONResponse(content={"models": models})
 
 
+@router.get("/max-capacity")
+async def get_max_capacity(
+    key: str,
+    model: str = DEFAULT_MODEL
+):
+    """获取最大消息容量（无需提供消息内容）"""
+    key_check = PulsarService.validate_key(key)
+    if not key_check["valid"]:
+        raise HTTPException(status_code=400, detail=key_check["error"])
+
+    try:
+        key_bytes = key.encode("utf-8")
+        max_capacity = PulsarService.get_capacity(model, key_bytes)
+        return JSONResponse(content={"max_capacity": max_capacity})
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"容量查询失败: {str(e)}")
+
+
 @router.post("/capacity")
 async def check_capacity(
     message: str = Form(...),
