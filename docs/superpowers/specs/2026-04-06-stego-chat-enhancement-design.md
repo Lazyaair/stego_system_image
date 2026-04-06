@@ -75,7 +75,7 @@ Complete the steganographic image messaging feature in the chat system. Currentl
 
 - Path uses `user-code/` prefix to avoid conflict with existing `GET /api/v1/invite/{code}` route
 - Requires JWT authentication
-- Only allows querying invite codes of users who are contacts of the requester (prevents arbitrary code lookup)
+- Any authenticated user can query (contacts are client-side only, no server-side contact table exists)
 - Auto-generates a code if the target user doesn't have one
 - Response: `{ "code": "ABC123", "user_id": "<id>", "username": "<name>" }`
 
