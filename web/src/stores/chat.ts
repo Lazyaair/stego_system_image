@@ -8,12 +8,38 @@ import {
   getMessage,
 } from '../db'
 import { wsClient } from '../api/websocket'
+import { getMyCode, getUserCode } from '../api/invite'
 import { useAuthStore } from './auth'
 import { useContactsStore } from './contacts'
 
 export const useChatStore = defineStore('chat', () => {
   const messages = ref<Map<string, Message[]>>(new Map())
   const pendingRequests = ref<Array<{ userId: string; username: string; messages: any[] }>>([])
+  const myInviteCode = ref('')
+  const peerInviteCode = ref('')
+  const inviteCodesLoaded = ref(false)
+
+  async function loadInviteCodes(peerUserId: string) {
+    try {
+      const [myCodeRes, peerCodeRes] = await Promise.all([
+        getMyCode(),
+        getUserCode(peerUserId)
+      ])
+      myInviteCode.value = myCodeRes.code
+      peerInviteCode.value = peerCodeRes.code
+      inviteCodesLoaded.value = true
+    } catch (e) {
+      console.error('Failed to load invite codes:', e)
+      inviteCodesLoaded.value = false
+    }
+  }
+
+  function getStegoKey(isOutgoing: boolean): string {
+    if (isOutgoing) {
+      return myInviteCode.value + peerInviteCode.value
+    }
+    return peerInviteCode.value + myInviteCode.value
+  }
 
   async function loadMessages(contactId: string) {
     const msgs = await getMessagesByContact(contactId)
@@ -69,7 +95,7 @@ export const useChatStore = defineStore('chat', () => {
     })
   }
 
-  async function sendStegoMessage(toUserId: string, content: string, stegoImage: string) {
+  async function sendStegoMessage(toUserId: string, stegoImage: string) {
     const auth = useAuthStore()
     if (!auth.user) return
 
@@ -80,7 +106,7 @@ export const useChatStore = defineStore('chat', () => {
       id,
       contact_id: toUserId,
       direction: 'sent',
-      content,
+      content: '',
       content_type: 'stego',
       stego_image: stegoImage,
       status: 'sending',
@@ -101,7 +127,7 @@ export const useChatStore = defineStore('chat', () => {
         from_user_id: auth.user.user_id,
         from_username: auth.user.username,
         to_user_id: toUserId,
-        content,
+        content: '',
         content_type: 'stego',
         stego_image: stegoImage,
         burn_after: 0,
@@ -247,9 +273,14 @@ export const useChatStore = defineStore('chat', () => {
   return {
     messages,
     pendingRequests,
+    myInviteCode,
+    peerInviteCode,
+    inviteCodesLoaded,
     loadMessages,
     getMessages,
     getLastMessage,
+    loadInviteCodes,
+    getStegoKey,
     sendTextMessage,
     sendStegoMessage,
     sendReadReceipt,
