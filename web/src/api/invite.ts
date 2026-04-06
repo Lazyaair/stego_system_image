@@ -25,3 +25,14 @@ export async function lookupCode(code: string): Promise<InviteLookupResponse> {
   const { data } = await api.get(`/api/v1/invite/${code}`)
   return data
 }
+
+export interface UserCodeResponse {
+  code: string
+  user_id: string
+  username: string
+}
+
+export async function getUserCode(userId: string): Promise<UserCodeResponse> {
+  const { data } = await api.get(`/api/v1/invite/user-code/${userId}`)
+  return data
+}

@@ -35,6 +35,10 @@ export interface ExtractResponse {
   is_demo: boolean
 }
 
+export interface MaxCapacityResponse {
+  max_capacity: number
+}
+
 export const stegoApi = {
   async getModels(): Promise<ModelsResponse> {
     const response = await apiClient.get<ModelsResponse>('/api/v1/stego/models')
@@ -79,5 +83,12 @@ export const stegoApi = {
       return { valid: false, error: '密钥长度不能超过 64 字符' }
     }
     return { valid: true }
-  }
+  },
+
+  async getMaxCapacity(key: string, model: string = 'celebahq'): Promise<MaxCapacityResponse> {
+    const { data } = await apiClient.get('/api/v1/stego/max-capacity', {
+      params: { key, model }
+    })
+    return data
+  },
 }
