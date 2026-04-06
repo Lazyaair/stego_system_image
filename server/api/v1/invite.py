@@ -55,6 +55,34 @@ async def reset_code(user: dict = Depends(get_current_user)):
     return {"code": code, "link": f"stegoapp://add/{code}", "created_at": None}
 
 
+@router.get("/user-code/{user_id}")
+async def get_user_code(user_id: str, user=Depends(get_current_user)):
+    """根据 user_id 获取该用户的 invite code（需要认证）"""
+    db = await get_db()
+    rows = await db.execute_fetchall(
+        "SELECT code FROM invite_codes WHERE user_id = ?", (user_id,)
+    )
+    if rows:
+        code = rows[0][0]
+    else:
+        # Auto-generate if user has no code
+        code = generate_code()
+        await db.execute(
+            "INSERT INTO invite_codes (code, user_id) VALUES (?, ?)",
+            (code, user_id),
+        )
+        await db.commit()
+
+    # Get username
+    user_rows = await db.execute_fetchall(
+        "SELECT username FROM users WHERE id = ?", (user_id,)
+    )
+    if not user_rows:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {"code": code, "user_id": user_id, "username": user_rows[0][0]}
+
+
 @router.get("/{code}")
 async def lookup_code(code: str):
     db = await get_db()
