@@ -11,4 +11,7 @@ interface InviteApi {
 
     @GET("/api/v1/invite/{code}")
     suspend fun lookupCode(@Path("code") code: String): InviteLookupResponse
+
+    @GET("/api/v1/invite/user-code/{userId}")
+    suspend fun getUserCode(@Path("userId") userId: String): UserCodeResponse
 }

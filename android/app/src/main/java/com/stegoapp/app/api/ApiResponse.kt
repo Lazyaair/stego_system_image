@@ -17,6 +17,16 @@ data class CapacityResponse(
     val error: String?
 )
 
+data class MaxCapacityResponse(
+    val max_capacity: Int
+)
+
+data class UserCodeResponse(
+    val code: String,
+    val user_id: String,
+    val username: String
+)
+
 data class EmbedResponse(
     val status: String,
     val stego_image: String?,

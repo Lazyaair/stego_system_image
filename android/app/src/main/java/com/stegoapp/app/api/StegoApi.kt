@@ -32,4 +32,10 @@ interface StegoApi {
         @Part("key") key: RequestBody,
         @Part("model") model: RequestBody
     ): Response<ExtractResponse>
+
+    @GET("/api/v1/stego/max-capacity")
+    suspend fun getMaxCapacity(
+        @Query("key") key: String,
+        @Query("model") model: String = "celebahq"
+    ): Response<MaxCapacityResponse>
 }
