@@ -8,8 +8,15 @@ import com.stegoapp.app.data.local.entity.ContactEntity
 import com.stegoapp.app.data.local.entity.MessageEntity
 import com.stegoapp.app.data.remote.WsClient
 import com.stegoapp.app.data.remote.WsMessage
+import com.stegoapp.app.api.ApiClient
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 import java.util.UUID
 
 class ChatViewModel(app: Application) : AndroidViewModel(app) {
@@ -38,6 +45,66 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _kicked = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
     val kicked = _kicked.asSharedFlow()
+
+    private val _myInviteCode = MutableStateFlow("")
+    val myInviteCode: StateFlow<String> = _myInviteCode.asStateFlow()
+
+    private val _peerInviteCode = MutableStateFlow("")
+    val peerInviteCode: StateFlow<String> = _peerInviteCode.asStateFlow()
+
+    private val _inviteCodesLoaded = MutableStateFlow(false)
+    val inviteCodesLoaded: StateFlow<Boolean> = _inviteCodesLoaded.asStateFlow()
+
+    private val _stegoMode = MutableStateFlow(false)
+    val stegoMode: StateFlow<Boolean> = _stegoMode.asStateFlow()
+
+    private val _maxCapacity = MutableStateFlow(0)
+    val maxCapacity: StateFlow<Int> = _maxCapacity.asStateFlow()
+
+    private val _stegoLoading = MutableStateFlow(false)
+    val stegoLoading: StateFlow<Boolean> = _stegoLoading.asStateFlow()
+
+    fun loadInviteCodes(peerUserId: String) {
+        viewModelScope.launch {
+            try {
+                val inviteApi = ApiClient.inviteApi
+                val myCodeRes = inviteApi.getMyCode()
+                val peerCodeRes = inviteApi.getUserCode(peerUserId)
+                _myInviteCode.value = myCodeRes.code
+                _peerInviteCode.value = peerCodeRes.code
+                _inviteCodesLoaded.value = true
+                fetchMaxCapacity()
+            } catch (e: Exception) {
+                _inviteCodesLoaded.value = false
+            }
+        }
+    }
+
+    private fun fetchMaxCapacity() {
+        viewModelScope.launch {
+            try {
+                val key = _myInviteCode.value + _peerInviteCode.value
+                val stegoApi = ApiClient.stegoApi
+                val res = stegoApi.getMaxCapacity(key)
+                if (res.isSuccessful) {
+                    _maxCapacity.value = res.body()?.max_capacity ?: 0
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun toggleStegoMode() {
+        if (!_inviteCodesLoaded.value) return
+        _stegoMode.value = !_stegoMode.value
+    }
+
+    fun getStegoKey(isOutgoing: Boolean): String {
+        return if (isOutgoing) {
+            _myInviteCode.value + _peerInviteCode.value
+        } else {
+            _peerInviteCode.value + _myInviteCode.value
+        }
+    }
 
     fun connectWebSocket(token: String) {
         wsClient.connect(token)
@@ -164,6 +231,91 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                     "is_first_contact" to false
                 )
             ))
+        }
+    }
+
+    fun sendStegoMessage(toUserId: String, secretMessage: String, fromUserId: String, fromUsername: String) {
+        viewModelScope.launch {
+            _stegoLoading.value = true
+            try {
+                val key = getStegoKey(true)
+                val stegoApi = ApiClient.stegoApi
+                val res = stegoApi.embed(secretMessage, key, "celebahq")
+                if (!res.isSuccessful) {
+                    _stegoLoading.value = false
+                    return@launch
+                }
+                var stegoImage = res.body()?.stego_image ?: return@launch
+                // Strip data:image/png;base64, prefix
+                if (stegoImage.startsWith("data:")) {
+                    stegoImage = stegoImage.substringAfter(",")
+                }
+
+                val msgId = UUID.randomUUID().toString()
+                val now = System.currentTimeMillis() / 1000
+                val entity = MessageEntity(
+                    id = msgId,
+                    contactId = toUserId,
+                    direction = "sent",
+                    content = "",
+                    contentType = "stego",
+                    stegoImage = stegoImage,
+                    status = "sending",
+                    createdAt = now.toString()
+                )
+                messageDao.insert(entity)
+
+                wsClient.send(WsMessage(
+                    type = "chat",
+                    id = msgId,
+                    timestamp = now,
+                    payload = mapOf(
+                        "from_user_id" to fromUserId,
+                        "from_username" to fromUsername,
+                        "to_user_id" to toUserId,
+                        "content" to "",
+                        "content_type" to "stego",
+                        "stego_image" to stegoImage,
+                        "burn_after" to 0
+                    )
+                ))
+            } catch (_: Exception) {
+            } finally {
+                _stegoLoading.value = false
+            }
+        }
+    }
+
+    suspend fun extractMessage(stegoImageBase64: String, isOutgoing: Boolean): String {
+        return withContext(Dispatchers.IO) {
+            try {
+                val key = getStegoKey(isOutgoing)
+                val base64Clean = if (stegoImageBase64.startsWith("data:")) {
+                    stegoImageBase64.substringAfter(",")
+                } else {
+                    stegoImageBase64
+                }
+                val bytes = android.util.Base64.decode(base64Clean, android.util.Base64.DEFAULT)
+                val tempFile = File.createTempFile("stego_extract", ".png", getApplication<android.app.Application>().cacheDir)
+                tempFile.writeBytes(bytes)
+
+                val requestFile = tempFile.asRequestBody("image/png".toMediaTypeOrNull())
+                val part = okhttp3.MultipartBody.Part.createFormData("stego_image", "stego.png", requestFile)
+                val keyBody = key.toRequestBody("text/plain".toMediaTypeOrNull())
+                val modelBody = "celebahq".toRequestBody("text/plain".toMediaTypeOrNull())
+
+                val stegoApi = ApiClient.stegoApi
+                val res = stegoApi.extract(part, keyBody, modelBody)
+                tempFile.delete()
+
+                if (res.isSuccessful) {
+                    res.body()?.secret_message ?: "(空)"
+                } else {
+                    "提取失败: ${res.code()}"
+                }
+            } catch (e: Exception) {
+                "提取失败: ${e.message}"
+            }
         }
     }
 
