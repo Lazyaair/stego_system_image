@@ -1,0 +1,25 @@
+% 中文关键字
+\newcommand{\keywordsCn}[1][图像隐写；可证安全；扩散模型；跨平台通信；隐写系统]{#1}
+% 中文摘要
+\begin{abstract}
+    随着网络通信技术的快速发展，信息安全与隐私保护日益受到重视。图像隐写术作为信息隐藏技术的重要分支，通过将秘密信息嵌入载体图像中实现隐蔽通信，在国家安全、版权保护和隐私通信等领域具有重要应用价值。传统隐写方法在安全性方面存在不足，容易被基于深度学习的隐写分析工具检测。近年来，基于生成模型的可证安全隐写方案为解决这一问题提供了理论保障。
+
+    本文设计并实现了一个基于 Pulsar 算法的可证安全图像隐写系统。Pulsar 算法利用扩散模型的逆向采样过程，结合算术编码与伪随机数生成器，将秘密消息编码为模型生成图像的采样路径，从而实现可证安全的信息嵌入，使含密图像与正常生成图像在统计分布上不可区分。
+
+    系统采用客户端--服务端架构，服务端基于 Python FastAPI 框架构建，集成 Pulsar 隐写算法，提供 RESTful API 和 WebSocket 实时通信服务；客户端包括基于 Kotlin Jetpack Compose 的 Android 应用和基于 Vue.js 3 的 Web 应用，均实现了用户注册登录、好友管理、实时聊天以及隐写消息收发等完整功能。系统支持普通消息与隐写消息两种通信模式，用户可在聊天过程中无缝切换，实现隐蔽的端到端信息传输。
+
+    测试结果表明，系统功能完整、运行稳定，能够正确实现消息的隐写嵌入与提取，跨平台通信兼容性良好。本系统将可证安全隐写理论与实际工程应用相结合，为安全隐蔽通信提供了一种可行的解决方案。
+\end{abstract}
+
+% 英文关键字
+\newcommand{\keywordsEn}[1][Image Steganography; Provable Security; Diffusion Model; Cross-platform Communication; Steganography System]{#1}
+% 英文摘要
+\begin{abstractEn}
+    With the rapid development of network communication technologies, information security and privacy protection have attracted increasing attention. Image steganography, as an important branch of information hiding, achieves covert communication by embedding secret messages into cover images and has significant applications in national security, copyright protection, and private communication. Traditional steganographic methods suffer from security deficiencies and are susceptible to detection by deep learning-based steganalysis tools. In recent years, provably secure steganographic schemes based on generative models have provided theoretical guarantees for addressing this problem.
+
+    This thesis designs and implements a provably secure image steganography system based on the Pulsar algorithm. The Pulsar algorithm leverages the reverse sampling process of diffusion models, combined with arithmetic coding and pseudo-random number generators, to encode secret messages as sampling paths of model-generated images, thereby achieving provably secure information embedding where stego images are statistically indistinguishable from normally generated images.
+
+    The system adopts a client-server architecture. The server is built on the Python FastAPI framework, integrating the Pulsar steganographic algorithm and providing RESTful APIs and WebSocket real-time communication services. The client side includes an Android application based on Kotlin Jetpack Compose and a Web application based on Vue.js 3, both implementing complete functionalities including user registration and login, friend management, real-time chat, and steganographic message transmission. The system supports both normal and steganographic communication modes, allowing users to seamlessly switch during conversations for covert end-to-end information transmission.
+
+    Testing results demonstrate that the system is functionally complete and operates stably, correctly performing steganographic embedding and extraction of messages with good cross-platform communication compatibility. This system combines provably secure steganography theory with practical engineering applications, providing a feasible solution for secure covert communication.
+\end{abstractEn}

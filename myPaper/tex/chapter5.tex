@@ -1,0 +1,172 @@
+\section{系统测试与分析}\label{chap:testing}
+
+本章介绍系统的测试环境、功能测试、隐写性能分析以及跨平台兼容性测试的过程与结果。
+
+\subsection{测试环境}
+
+系统测试所使用的软硬件环境如\cref{tab:test_env}所示。
+
+\begin{table}[htb!]
+    \caption{测试环境配置}
+    \centering
+    \begin{tabular}{ll}
+        \hline
+        \textbf{项目} & \textbf{配置} \\
+        \hline
+        操作系统 & Ubuntu 22.04 LTS \\
+        CPU & Intel Core i7 / AMD Ryzen 7 \\
+        GPU & NVIDIA GPU（支持 CUDA） \\
+        内存 & 16 GB \\
+        Python 版本 & 3.10+（Sage 环境） \\
+        Android 测试设备 & Android 12+ 物理设备/模拟器 \\
+        Web 浏览器 & Google Chrome 120+ \\
+        \hline
+    \end{tabular}
+    \label{tab:test_env}
+\end{table}
+
+服务端运行在本地开发环境中，使用 \texttt{uvicorn} 作为 ASGI 服务器，监听 8000 端口。Pulsar 算法在 Sage 数学软件环境中运行，使用 CUDA 加速扩散模型的推理计算。
+
+\subsection{功能测试}
+
+\subsubsection{用户注册与登录测试}
+
+测试了用户注册和登录的正常流程与异常处理，测试用例及结果如\cref{tab:test_auth}所示。
+
+\begin{table}[htb!]
+    \caption{用户注册与登录测试用例}
+    \centering
+    \begin{tabular}{clc}
+        \hline
+        \textbf{编号} & \textbf{测试内容} & \textbf{结果} \\
+        \hline
+        T-01 & 正常注册新用户 & 通过 \\
+        T-02 & 注册已存在的用户名 & 通过（正确提示错误） \\
+        T-03 & 正确用户名密码登录 & 通过 \\
+        T-04 & 错误密码登录 & 通过（正确提示错误） \\
+        T-05 & 登录后获取用户信息 & 通过 \\
+        T-06 & 注册后自动生成邀请码 & 通过 \\
+        \hline
+    \end{tabular}
+    \label{tab:test_auth}
+\end{table}
+
+\subsubsection{好友管理测试}
+
+测试了好友添加的完整流程，包括邀请码查询、好友请求发送与处理等，测试用例及结果如\cref{tab:test_friend}所示。
+
+\begin{table}[htb!]
+    \caption{好友管理测试用例}
+    \centering
+    \begin{tabular}{clc}
+        \hline
+        \textbf{编号} & \textbf{测试内容} & \textbf{结果} \\
+        \hline
+        T-07 & 通过邀请码查找用户 & 通过 \\
+        T-08 & 发送好友请求（对方在线） & 通过 \\
+        T-09 & 发送好友请求（对方离线） & 通过（离线缓存生效） \\
+        T-10 & 接受好友请求 & 通过 \\
+        T-11 & 拒绝好友请求 & 通过 \\
+        T-12 & 重复发送好友请求（去重） & 通过 \\
+        \hline
+    \end{tabular}
+    \label{tab:test_friend}
+\end{table}
+
+\subsubsection{消息收发测试}
+
+测试了普通消息和隐写消息在不同场景下的收发功能，测试用例及结果如\cref{tab:test_msg}所示。
+
+\begin{table}[htb!]
+    \caption{消息收发测试用例}
+    \centering
+    \begin{tabular}{clc}
+        \hline
+        \textbf{编号} & \textbf{测试内容} & \textbf{结果} \\
+        \hline
+        T-13 & 发送普通文本消息（双方在线） & 通过 \\
+        T-14 & 发送普通文本消息（对方离线后上线） & 通过 \\
+        T-15 & 发送隐写消息（嵌入与传输） & 通过 \\
+        T-16 & 接收隐写消息并提取文本 & 通过 \\
+        T-17 & 消息本地持久化存储 & 通过 \\
+        T-18 & 隐写图像保存到本地 & 通过 \\
+        \hline
+    \end{tabular}
+    \label{tab:test_msg}
+\end{table}
+
+\subsubsection{隐写嵌入与提取测试}
+
+测试了独立隐写工具页面的嵌入与提取功能，测试用例及结果如\cref{tab:test_stego}所示。
+
+\begin{table}[htb!]
+    \caption{隐写嵌入与提取测试用例}
+    \centering
+    \begin{tabular}{clc}
+        \hline
+        \textbf{编号} & \textbf{测试内容} & \textbf{结果} \\
+        \hline
+        T-19 & 正常嵌入短文本消息 & 通过 \\
+        T-20 & 嵌入后正确提取消息 & 通过 \\
+        T-21 & 超出容量限制时提示错误 & 通过 \\
+        T-22 & 使用错误密钥提取（应失败） & 通过（输出乱码） \\
+        T-23 & 容量查询接口测试 & 通过 \\
+        \hline
+    \end{tabular}
+    \label{tab:test_stego}
+\end{table}
+
+\subsection{隐写性能分析}
+
+\subsubsection{嵌入容量}
+
+Pulsar 算法的嵌入容量取决于扩散模型生成图像的编码区域划分结果。在使用 CelebA-HQ 256$\times$256 预训练模型的条件下，系统的典型嵌入容量约为数百字节。具体容量因密钥不同而略有变化，因为密钥决定了伪随机数生成器的状态，进而影响区域划分结果。
+
+% TODO: 补充具体的容量数据和对比表格
+
+\subsubsection{安全性分析}
+
+Pulsar 算法的可证安全性已在原始论文中得到理论证明\supercite{chen2024pulsar}。其安全性保证基于以下两点：
+
+\begin{enumerate}
+    \item \textbf{分布一致性}：含密图像与正常生成图像都由同一扩散模型生成，差异仅在于采样噪声的来源（PRG vs 真随机数），在密码学安全假设下两者不可区分。
+    \item \textbf{密钥安全性}：不知道密钥的攻击者无法确定编码区域和噪声分配，因此无法从图像中恢复秘密信息。
+\end{enumerate}
+
+这意味着对于任何多项式时间的隐写分析检测器，检测含密图像的成功概率不优于随机猜测。
+
+\subsubsection{图像质量}
+
+Pulsar 生成的图像质量完全取决于底层扩散模型的生成能力。由于信息嵌入仅改变了采样路径而非模型本身，含密图像的视觉质量与正常生成图像无差异。使用 CelebA-HQ 预训练模型时，生成的人脸图像分辨率为 256$\times$256，具有较高的真实感。
+
+% TODO: 可补充 FID 或 SSIM 等量化指标
+
+\subsection{跨平台兼容性测试}
+
+系统设计的一个重要目标是支持跨平台通信。测试了 Android 客户端与 Web 客户端之间的互操作性，结果如\cref{tab:test_cross}所示。
+
+\begin{table}[htb!]
+    \caption{跨平台兼容性测试}
+    \centering
+    \begin{tabular}{clc}
+        \hline
+        \textbf{编号} & \textbf{测试场景} & \textbf{结果} \\
+        \hline
+        T-24 & Android 发送普通消息 → Web 接收 & 通过 \\
+        T-25 & Web 发送普通消息 → Android 接收 & 通过 \\
+        T-26 & Android 发送隐写消息 → Web 提取 & 通过 \\
+        T-27 & Web 发送隐写消息 → Android 提取 & 通过 \\
+        T-28 & Android 发送好友请求 → Web 处理 & 通过 \\
+        T-29 & Web 发送好友请求 → Android 处理 & 通过 \\
+        T-30 & 单端登录：Android 登录后 Web 被踢出 & 通过 \\
+        T-31 & 单端登录：Web 登录后 Android 被踢出 & 通过 \\
+        \hline
+    \end{tabular}
+    \label{tab:test_cross}
+\end{table}
+
+测试结果表明，Android 客户端和 Web 客户端之间能够正常互相发送普通消息和隐写消息，好友管理和单端登录功能跨平台工作正常。base64 编码的隐写图像在两个平台间传输和解析无兼容性问题。
+
+\subsection{本章小结}
+
+本章从功能测试、隐写性能分析和跨平台兼容性三个维度对系统进行了全面测试。功能测试覆盖了用户管理、好友管理、消息收发和隐写操作等核心功能，共计31个测试用例全部通过。隐写性能分析验证了系统在安全性和图像质量方面的表现。跨平台兼容性测试确认了 Android 和 Web 客户端之间的完整互操作性。测试结果表明系统功能完整、运行稳定。

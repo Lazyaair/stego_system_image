@@ -1,0 +1,266 @@
+\section{系统设计}\label{chap:design}
+
+本章从需求分析出发，详细阐述系统的总体架构设计、服务端设计、客户端设计和安全设计方案。
+
+\subsection{需求分析}
+
+\subsubsection{功能需求}
+
+通过对可证安全图像隐写通信系统的应用场景分析，确定系统的功能需求如下：
+
+\begin{enumerate}
+    \item \textbf{用户管理}：支持用户注册、登录、注销，每个用户拥有唯一的邀请码标识。
+    \item \textbf{好友管理}：通过邀请码添加好友，支持好友请求的发送、接受和拒绝。
+    \item \textbf{实时聊天}：支持一对一文本消息的即时收发，消息持久化存储于本地。
+    \item \textbf{隐写消息}：在聊天过程中支持隐写模式，可将文本消息嵌入图像中发送，接收方可提取和查看隐藏的消息。
+    \item \textbf{独立隐写工具}：提供独立的消息嵌入和提取页面，支持用户手动输入密钥进行隐写操作。
+    \item \textbf{跨平台支持}：系统需同时支持 Android 和 Web 两个平台，不同平台的用户可以互相通信。
+\end{enumerate}
+
+\subsubsection{非功能需求}
+
+\begin{enumerate}
+    \item \textbf{安全性}：隐写算法须满足可证安全条件；用户认证采用 JWT 令牌机制；密码存储使用安全的哈希算法。
+    \item \textbf{实时性}：消息收发延迟应在秒级以内（不含隐写计算时间）。
+    \item \textbf{可靠性}：当用户离线时，消息应缓存于服务端，待用户上线后自动投递。
+    \item \textbf{易用性}：客户端界面简洁直观，隐写功能与普通聊天无缝集成。
+\end{enumerate}
+
+\subsection{系统总体架构}
+
+系统采用客户端--服务端（C/S）架构，由服务端、Android 客户端和 Web 客户端三部分组成。系统总体架构如\cref{fig:architecture}所示。
+
+\begin{figure}[htb!]
+    \centering
+    \begin{tabular}{|c|}
+        \hline
+        \textbf{Android 客户端} \\
+        Kotlin + Jetpack Compose \\
+        Room + OkHttp WebSocket \\
+        \hline
+    \end{tabular}
+    \quad
+    \begin{tabular}{|c|}
+        \hline
+        \textbf{Web 客户端} \\
+        Vue.js 3 + TypeScript \\
+        Pinia + IndexedDB \\
+        \hline
+    \end{tabular}
+
+    \vspace{0.5cm}
+    $\Updownarrow$ \quad HTTP / WebSocket \quad $\Updownarrow$
+    \vspace{0.5cm}
+
+    \begin{tabular}{|c|}
+        \hline
+        \textbf{服务端} \\
+        Python FastAPI \\
+        SQLite + Pulsar 算法引擎 \\
+        \hline
+    \end{tabular}
+    \caption{系统总体架构}
+    \label{fig:architecture}
+\end{figure}
+
+各组件的职责分工如下：
+
+\begin{itemize}
+    \item \textbf{服务端}：负责用户认证与管理、好友关系维护、WebSocket 连接管理与消息路由、离线消息缓存、Pulsar 隐写算法的执行（嵌入与提取计算）。
+    \item \textbf{Android 客户端}：提供移动端的用户界面，包括登录注册、联系人管理、聊天界面和隐写工具，使用 Room 数据库本地存储聊天记录。
+    \item \textbf{Web 客户端}：提供浏览器端的用户界面，功能与 Android 客户端对齐，使用 IndexedDB 本地存储聊天记录。
+\end{itemize}
+
+服务端与客户端之间通过两种通信方式交互：
+
+\begin{itemize}
+    \item \textbf{RESTful API（HTTP）}：用于用户注册登录、隐写嵌入提取、邀请码查询等请求-响应式操作。
+    \item \textbf{WebSocket}：用于实时消息推送、好友请求通知、在线状态变化等需要双向实时通信的场景。
+\end{itemize}
+
+\subsection{服务端设计}
+
+\subsubsection{API 接口设计}
+
+服务端 API 按照功能模块划分为四组路由，如\cref{tab:api}所示。
+
+\begin{table}[htb!]
+    \caption{服务端 API 接口设计}
+    \centering
+    \begin{tabular}{llp{5cm}}
+        \hline
+        \textbf{端点} & \textbf{方法} & \textbf{功能} \\
+        \hline
+        /api/v1/auth/register & POST & 用户注册 \\
+        /api/v1/auth/login & POST & 用户登录 \\
+        /api/v1/auth/me & GET & 获取当前用户信息 \\
+        \hline
+        /api/v1/invite/my-code & GET & 获取自身邀请码 \\
+        /api/v1/invite/reset & POST & 重置邀请码 \\
+        /api/v1/invite/lookup/\{code\} & GET & 根据邀请码查找用户 \\
+        /api/v1/invite/user-code/\{user\_id\} & GET & 获取指定用户邀请码 \\
+        \hline
+        /api/v1/stego/embed & POST & 消息嵌入 \\
+        /api/v1/stego/extract & POST & 消息提取 \\
+        /api/v1/stego/capacity & POST & 容量检查 \\
+        /api/v1/stego/max-capacity & GET & 获取最大容量 \\
+        /api/v1/stego/models & GET & 获取可用模型列表 \\
+        \hline
+        /ws?token=\{jwt\} & WebSocket & 实时通信连接 \\
+        \hline
+    \end{tabular}
+    \label{tab:api}
+\end{table}
+
+\subsubsection{数据库设计}
+
+服务端使用 SQLite 数据库存储用户数据。数据库包含三张核心表，如\cref{tab:db}所示。
+
+\begin{table}[htb!]
+    \caption{服务端数据库表结构}
+    \centering
+    \begin{tabular}{llll}
+        \hline
+        \textbf{表名} & \textbf{字段} & \textbf{类型} & \textbf{说明} \\
+        \hline
+        users & id & TEXT (PK) & 用户 UUID \\
+        & username & TEXT (UNIQUE) & 用户名 \\
+        & password\_hash & TEXT & 密码哈希 \\
+        & created\_at & DATETIME & 创建时间 \\
+        \hline
+        invite\_codes & code & TEXT (PK) & 邀请码 \\
+        & user\_id & TEXT (FK, UNIQUE) & 所属用户 \\
+        & created\_at & DATETIME & 创建时间 \\
+        \hline
+        message\_queue & id & TEXT (PK) & 消息 UUID \\
+        & to\_user\_id & TEXT (FK) & 目标用户 \\
+        & payload & TEXT & 消息 JSON 内容 \\
+        & created\_at & DATETIME & 创建时间 \\
+        & expires\_at & DATETIME & 过期时间 \\
+        \hline
+    \end{tabular}
+    \label{tab:db}
+\end{table}
+
+好友关系不存储在服务端数据库中，而是通过客户端本地数据库维护，服务端仅负责转发好友请求消息。这种设计减轻了服务端的存储负担，同时保护了用户的社交关系隐私。
+
+\subsubsection{WebSocket 通信协议设计}
+
+WebSocket 连接建立后，客户端和服务端通过 JSON 格式的消息进行通信。消息类型设计如\cref{tab:ws_msg}所示。
+
+\begin{table}[htb!]
+    \caption{WebSocket 消息类型}
+    \centering
+    \begin{tabular}{lp{7cm}}
+        \hline
+        \textbf{消息类型} & \textbf{说明} \\
+        \hline
+        chat & 普通文本聊天消息 \\
+        stego & 隐写图像消息（携带 base64 图像数据） \\
+        friend\_request & 好友请求 \\
+        friend\_accept & 接受好友请求 \\
+        friend\_reject & 拒绝好友请求 \\
+        first\_contact & 首次联系通知（自动触发） \\
+        kicked & 单端登录踢出通知 \\
+        \hline
+    \end{tabular}
+    \label{tab:ws_msg}
+\end{table}
+
+\subsubsection{离线消息队列设计}
+
+当目标用户不在线时，服务端将消息暂存于 \texttt{message\_queue} 表中，并设置过期时间（默认7天）。当用户重新连接 WebSocket 时，服务端自动查询并投递该用户的所有未过期离线消息，投递完成后从队列中删除。同时，服务端启动定时任务每5分钟清理过期消息。
+
+\subsubsection{隐写服务集成设计}
+
+隐写服务通过 \texttt{PulsarService} 类封装 Pulsar 算法，采用单例模式管理模型实例。每个（模型、密钥）组合对应一个独立的 Pulsar 实例，实例创建时自动完成模型加载和区域估计。嵌入和提取操作通过服务类的类方法调用，支持多种预训练模型（CelebA-HQ、Church、Bedroom、Cat）。
+
+\subsection{客户端设计}
+
+\subsubsection{Android 客户端架构}
+
+Android 客户端采用 MVVM（Model-View-ViewModel）架构模式，如\cref{fig:android_arch}所示。
+
+\begin{figure}[htb!]
+    \centering
+    \begin{tabular}{|c|}
+        \hline
+        \textbf{View 层}：Jetpack Compose UI 组件 \\
+        LoginScreen / ContactsScreen / ChatScreen / EmbedScreen / ExtractScreen \\
+        \hline
+    \end{tabular}
+
+    \vspace{0.3cm}
+    $\Updownarrow$
+    \vspace{0.3cm}
+
+    \begin{tabular}{|c|}
+        \hline
+        \textbf{ViewModel 层}：状态管理与业务逻辑 \\
+        AuthViewModel / ContactsViewModel / ChatViewModel \\
+        \hline
+    \end{tabular}
+
+    \vspace{0.3cm}
+    $\Updownarrow$
+    \vspace{0.3cm}
+
+    \begin{tabular}{|c|}
+        \hline
+        \textbf{Model 层}：数据访问 \\
+        Room 数据库 / OkHttp 网络 / WebSocket 客户端 \\
+        \hline
+    \end{tabular}
+    \caption{Android 客户端 MVVM 架构}
+    \label{fig:android_arch}
+\end{figure}
+
+\begin{itemize}
+    \item \textbf{View 层}：使用 Jetpack Compose 编写声明式 UI，包括登录注册、联系人列表、聊天界面、隐写嵌入和提取等页面。
+    \item \textbf{ViewModel 层}：管理 UI 状态，处理业务逻辑，通过 StateFlow 向 View 层提供响应式数据。
+    \item \textbf{Model 层}：包括 Room 数据库（本地存储聊天记录和联系人信息）、OkHttp 网络请求、WebSocket 客户端。
+\end{itemize}
+
+\subsubsection{Web 客户端架构}
+
+Web 客户端采用 Vue.js 3 组合式 API 开发，使用 Pinia 进行集中式状态管理。
+
+\begin{itemize}
+    \item \textbf{视图层}：Vue 单文件组件（SFC），包括 LoginView、ContactsView、ChatView、EmbedView、ExtractView 等。
+    \item \textbf{状态管理层}：Pinia Store 管理全局状态，包括 AuthStore（认证状态）、ChatStore（聊天与 WebSocket 连接）、ContactStore（联系人管理）。
+    \item \textbf{数据持久层}：使用 IndexedDB（通过 Dexie.js 封装）存储聊天消息和联系人数据。
+\end{itemize}
+
+\subsubsection{本地存储设计}
+
+Android 客户端的 Room 数据库包含以下实体：
+
+\begin{itemize}
+    \item \textbf{Contact}：联系人信息（用户ID、用户名、邀请码、添加时间）。
+    \item \textbf{ChatMessage}：聊天消息（消息ID、发送者、接收者、内容、时间、消息类型、隐写图像数据）。
+    \item \textbf{PendingRequest}：待处理的好友请求。
+\end{itemize}
+
+Web 客户端的 IndexedDB 数据库结构与之对应，使用 Dexie.js 定义 contacts 和 messages 两个对象存储。
+
+\subsection{安全设计}
+
+\subsubsection{JWT 认证机制}
+
+系统使用 JSON Web Token（JWT）进行用户身份认证。用户登录成功后，服务端签发包含用户ID和用户名的 JWT 令牌，有效期为7天。客户端在后续的 HTTP 请求中通过 Authorization 头部携带令牌，WebSocket 连接通过 URL 查询参数传递令牌。服务端使用 HMAC-SHA256 算法验证令牌的完整性和有效性。
+
+\subsubsection{密码安全}
+
+用户密码使用 PBKDF2-HMAC-SHA256 算法进行哈希存储，迭代次数为100,000次，每个用户使用随机生成的 UUID 作为盐值。这种方案有效防止了彩虹表攻击和暴力破解。
+
+\subsubsection{隐写密钥派生}
+
+在隐写聊天模式下，系统自动使用通信双方的邀请码拼接作为隐写密钥。具体而言，密钥 $K = \text{sender\_invite\_code} \| \text{receiver\_invite\_code}$，其中 $\|$ 表示字符串拼接。这种设计保证了每一对通信用户拥有唯一的密钥，且双方都能独立计算出相同的密钥。
+
+\subsubsection{单端登录策略}
+
+为防止多设备同时登录引发的数据一致性问题，系统实施单端登录策略。当用户在新设备登录时，服务端向旧连接发送 \texttt{kicked} 消息通知其被踢出，旧客户端收到通知后清除本地令牌并跳转到登录页面。5秒后服务端强制关闭旧连接作为兜底措施。
+
+\subsection{本章小结}
+
+本章从功能需求和非功能需求出发，设计了系统的总体架构，详细阐述了服务端的 API 接口、数据库、WebSocket 通信协议、离线消息队列和隐写服务的设计方案，以及客户端的架构和本地存储设计。同时，从 JWT 认证、密码安全、隐写密钥派生和单端登录四个方面介绍了系统的安全设计。

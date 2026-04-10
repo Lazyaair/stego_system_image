@@ -1,0 +1,183 @@
+\section{系统实现}\label{chap:implementation}
+
+本章分别介绍服务端、Android 客户端和 Web 客户端的具体实现过程，以及关键功能的实现细节。
+
+\subsection{服务端实现}
+
+\subsubsection{FastAPI 应用结构}
+
+服务端基于 FastAPI 框架构建，采用模块化的项目结构。主要目录组织如下：
+
+\begin{lstlisting}[language={}]
+server/
+├── main.py              # 应用入口
+├── config.py            # 配置项
+├── database.py          # 数据库初始化
+├── dependencies.py      # 依赖注入
+├── api/v1/
+│   ├── auth.py          # 认证路由
+│   ├── invite.py        # 邀请码路由
+│   ├── stego.py         # 隐写路由
+│   └── ws.py            # WebSocket 路由
+├── services/
+│   ├── auth_service.py  # 认证服务
+│   ├── pulsar_service.py# Pulsar 服务封装
+│   ├── ws_manager.py    # WebSocket 连接管理
+│   └── queue_service.py # 离线消息队列
+└── models/              # 数据模型
+\end{lstlisting}
+
+应用启动时通过 FastAPI 的生命周期管理（lifespan）完成数据库初始化和定时任务注册。路由通过 \texttt{include\_router} 方法注册到主应用实例。CORS 中间件允许跨域请求以支持 Web 客户端访问。
+
+\subsubsection{Pulsar 算法集成}
+
+Pulsar 算法通过 \texttt{PulsarService} 类进行封装，该类采用类方法设计，主要包含以下功能：
+
+\begin{itemize}
+    \item \textbf{实例管理}：使用字典缓存 Pulsar 实例，以（模型ID、密钥）组合作为缓存键。首次请求时自动加载预训练模型并执行区域估计，后续请求复用已有实例。
+    \item \textbf{嵌入操作}：接收消息字节、模型ID和密钥，调用 Pulsar 的 \texttt{generate\_with\_regions} 方法生成含密图像，将图像保存为16位 PNG 格式并返回字节数据。
+    \item \textbf{提取操作}：接收含密图像字节、模型ID和密钥，调用 \texttt{reveal\_with\_regions} 方法提取隐藏消息。
+    \item \textbf{容量查询}：返回当前模型和密钥配置下的最大可嵌入消息字节数。
+\end{itemize}
+
+Pulsar 服务通过将算法库路径动态添加到 Python 搜索路径实现导入。算法使用预训练的 DDPM（Denoising Diffusion Probabilistic Model）UNet2D 模型，支持 CUDA、MPS 和 CPU 三种计算后端。
+
+\subsubsection{WebSocket 连接管理}
+
+\texttt{ConnectionManager} 类负责管理所有活跃的 WebSocket 连接，使用字典维护用户ID到 WebSocket 实例的映射关系。核心实现包括：
+
+\begin{itemize}
+    \item \textbf{连接建立}：验证 JWT 令牌后建立连接。若该用户已有活跃连接（多设备登录），先向旧连接发送 \texttt{kicked} 消息，并设置5秒延迟强制关闭。
+    \item \textbf{消息路由}：根据消息中的目标用户ID查找对应的 WebSocket 连接，若目标用户在线则直接转发，否则将消息加入离线队列。
+    \item \textbf{离线消息投递}：用户连接建立后，自动查询并投递该用户的所有缓存消息。
+\end{itemize}
+
+\subsubsection{离线消息队列}
+
+离线消息使用 SQLite 的 \texttt{message\_queue} 表实现持久化存储。消息入队时设置7天过期时间，服务端通过 \texttt{asyncio.create\_task} 启动定时清理任务，每5分钟删除过期消息。用户重新上线时，系统自动投递所有未过期消息并从队列中移除。
+
+\subsection{Android 客户端实现}
+
+\subsubsection{界面实现}
+
+Android 客户端使用 Jetpack Compose 构建声明式 UI，主要包含以下页面：
+
+\begin{itemize}
+    \item \textbf{LoginScreen}：登录和注册界面，支持用户名密码输入和表单验证。
+    \item \textbf{ContactsScreen}：联系人列表，显示所有好友及其在线状态，支持通过邀请码添加好友。
+    \item \textbf{ChatScreen}：聊天界面，显示消息列表，支持普通消息和隐写消息的发送与接收。隐写模式下，用户输入的文本会先通过服务端嵌入为图像再发送。
+    \item \textbf{EmbedScreen}：独立的消息嵌入工具，支持手动输入密钥和消息进行嵌入。
+    \item \textbf{ExtractScreen}：独立的消息提取工具，支持上传含密图像进行提取。
+\end{itemize}
+
+页面导航使用 Jetpack Navigation Compose 实现，底部导航栏提供聊天、隐写工具和设置三个入口。隐写工具页面通过 Material 3 的 \texttt{TabRow} 组件实现嵌入和提取页面的切换。
+
+\subsubsection{Room 数据库实现}
+
+使用 Room 持久化库定义本地数据库，包含以下 DAO（Data Access Object）操作：
+
+\begin{itemize}
+    \item \texttt{ContactDao}：联系人的增删改查，支持按用户名搜索。
+    \item \texttt{ChatMessageDao}：聊天消息的插入和按联系人ID查询，支持按时间排序。
+    \item \texttt{PendingRequestDao}：好友请求的插入、查询和删除。
+\end{itemize}
+
+数据库版本管理使用 Room 的自动迁移功能。
+
+\subsubsection{WebSocket 客户端实现}
+
+Android 端使用 OkHttp 库实现 WebSocket 客户端。在 \texttt{ChatViewModel} 中管理连接生命周期：
+
+\begin{itemize}
+    \item 使用 \texttt{OkHttpClient} 创建 WebSocket 连接，URL 中携带 JWT 令牌。
+    \item 重写 \texttt{onMessage} 回调处理接收到的消息，根据消息类型分发到不同的处理函数（聊天消息、好友请求、隐写消息、踢出通知等）。
+    \item 重写 \texttt{onClosing} 回调完成 WebSocket 关闭握手（OkHttp 要求显式调用 \texttt{close} 完成握手）。
+    \item 连接断开后支持自动重连机制。
+\end{itemize}
+
+\subsubsection{隐写功能实现}
+
+聊天界面中的隐写模式通过一个切换开关控制：
+
+\begin{enumerate}
+    \item 用户切换到隐写模式后，发送消息前先调用 \texttt{/api/v1/stego/max-capacity} 接口查询当前密钥配置的最大容量，验证消息长度是否在限制范围内。
+    \item 发送时调用 \texttt{/api/v1/stego/embed} 接口将消息嵌入图像，密钥由双方邀请码自动拼接生成。
+    \item 嵌入成功后，将含密图像的 base64 数据作为 \texttt{stego} 类型消息通过 WebSocket 发送给对方。
+    \item 接收方收到隐写消息后，在聊天界面显示图像，用户可点击提取按钮调用 \texttt{/api/v1/stego/extract} 接口查看隐藏的文本消息。
+\end{enumerate}
+
+\subsection{Web 客户端实现}
+
+\subsubsection{Vue 组件结构}
+
+Web 客户端的主要页面组件包括：
+
+\begin{itemize}
+    \item \textbf{LoginView}：登录注册页面，使用响应式表单。
+    \item \textbf{ContactsView}：联系人管理，显示好友列表和待处理请求。
+    \item \textbf{ChatView}：聊天界面，支持普通和隐写两种消息模式。
+    \item \textbf{EmbedView}：消息嵌入工具页面。
+    \item \textbf{ExtractView}：消息提取工具页面。
+    \item \textbf{BottomNav}：底部导航栏组件。
+\end{itemize}
+
+\subsubsection{Pinia 状态管理}
+
+使用 Pinia 管理全局状态，定义了以下 Store：
+
+\begin{itemize}
+    \item \textbf{AuthStore}：管理用户认证状态，包括令牌存储、登录登出操作。令牌持久化到 \texttt{localStorage}。
+    \item \textbf{ChatStore}：管理 WebSocket 连接和消息收发。负责建立和维护 WebSocket 连接，处理各类消息的接收和分发，管理在线状态。
+    \item \textbf{ContactStore}：管理联系人列表和好友请求，数据持久化到 IndexedDB。
+\end{itemize}
+
+\subsubsection{IndexedDB 本地存储}
+
+使用 Dexie.js 封装 IndexedDB 操作，定义了 \texttt{contacts} 和 \texttt{messages} 两个对象存储。消息按联系人ID建立索引，支持高效的按会话查询。数据库随用户登录而创建，登出时可选择清除。
+
+\subsubsection{WebSocket 与隐写功能}
+
+Web 客户端的 WebSocket 和隐写功能实现逻辑与 Android 端基本一致。WebSocket 使用浏览器原生 \texttt{WebSocket} API，在 ChatStore 中管理连接生命周期。需注意的响应式处理细节包括：好友请求列表使用展开赋值（spread）触发 Vue 的响应式更新，避免直接 \texttt{push} 不触发视图刷新的问题。
+
+隐写图像在 Web 端以 base64 字符串存储（纯 base64，不含 \texttt{data:} 前缀），渲染时动态添加 \texttt{data:image/png;base64,} 前缀。
+
+\subsection{关键功能实现细节}
+
+\subsubsection{单端登录机制}
+
+单端登录涉及服务端和客户端的协同处理：
+
+\begin{enumerate}
+    \item \textbf{服务端}：\texttt{ConnectionManager.connect} 方法在新连接到来时，检查该用户是否已有活跃连接。若有，先发送 \texttt{kicked} 消息，然后创建异步任务在5秒后强制关闭旧连接。
+    \item \textbf{Android 客户端}：\texttt{ChatViewModel} 监听 \texttt{kicked} 消息，收到后断开 WebSocket、通过 SharedFlow 发射事件通知 UI 层显示提示信息并跳转登录页面。
+    \item \textbf{Web 客户端}：ChatStore 监听 \texttt{kicked} 消息，断开 WebSocket 后通过 DOM 自定义事件（CustomEvent）通知 \texttt{App.vue} 组件执行页面跳转。
+\end{enumerate}
+
+主动登出清除所有本地数据（令牌、聊天记录、联系人），而被踢出仅清除令牌，保留聊天记录便于用户重新登录后查看。
+
+\subsubsection{好友请求流程}
+
+好友添加采用基于邀请码的异步请求机制：
+
+\begin{enumerate}
+    \item 用户 A 输入用户 B 的邀请码，客户端调用 \texttt{/api/v1/invite/lookup} 查询对应用户信息。
+    \item 确认后，客户端通过 WebSocket 向用户 B 发送 \texttt{friend\_request} 消息。若 B 不在线，消息暂存于离线队列。
+    \item 用户 B 收到请求后可选择接受或拒绝。接受时发送 \texttt{friend\_accept} 消息，同时双方在本地数据库中添加对方为联系人。
+    \item 添加联系人时自动发送 \texttt{first\_contact} 通知，确保双方联系人列表同步。
+\end{enumerate}
+
+需要处理的边界情况包括：重复请求的去重、离线请求的暂存与恢复、接受请求时恢复所有暂存的聊天消息等。
+
+\subsubsection{隐写消息收发流程}
+
+隐写消息的完整收发流程如下：
+
+\begin{enumerate}
+    \item \textbf{发送方}：用户切换到隐写模式，输入文本消息。客户端获取双方邀请码拼接为密钥，调用嵌入 API。API 返回含密图像的 base64 数据后，通过 WebSocket 以 \texttt{stego} 类型发送。
+    \item \textbf{服务端}：接收 WebSocket 消息，根据目标用户ID转发（或入离线队列）。
+    \item \textbf{接收方}：收到 \texttt{stego} 消息后，在聊天界面显示图像预览。用户点击提取按钮，客户端使用相同的密钥调用提取 API，解密还原文本消息并显示。
+\end{enumerate}
+
+\subsection{本章小结}
+
+本章详细介绍了系统三个组件的具体实现过程。服务端通过模块化的 FastAPI 应用集成了 Pulsar 算法、WebSocket 通信和离线消息队列；Android 客户端基于 MVVM 架构使用 Jetpack Compose 构建了完整的 UI 和数据管理层；Web 客户端使用 Vue.js 3 和 Pinia 实现了与 Android 端功能对齐的浏览器应用。同时，本章重点阐述了单端登录、好友请求和隐写消息收发三个关键功能的跨端协同实现细节。

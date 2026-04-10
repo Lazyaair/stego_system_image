@@ -1,0 +1,149 @@
+\section{相关技术与理论基础}\label{chap:theory}
+
+本章介绍与系统设计和实现密切相关的理论基础和技术栈，包括图像隐写术的基本概念、可证安全隐写理论、Pulsar 算法的工作原理以及系统开发涉及的关键技术。
+
+\subsection{图像隐写术概述}
+
+图像隐写术是指将秘密信息嵌入到数字图像中，使得含密图像（Stego Image）在视觉上与原始载体图像（Cover Image）无显著差异，从而实现隐蔽通信的技术\supercite{fridrich2009steganography}。根据嵌入域的不同，图像隐写方法主要分为以下几类：
+
+\subsubsection{空间域隐写}
+
+空间域隐写直接修改图像像素值来嵌入信息。最经典的是 LSB（Least Significant Bit）替换方法，将秘密信息的每一比特替换载体图像对应像素的最低有效位\supercite{chan2004hiding}。该方法实现简单、嵌入容量大，但由于直接改变了像素的统计分布，容易被隐写分析检测。
+
+为降低嵌入失真，研究者提出了多种自适应隐写方法。HUGO\supercite{pevny2010using}通过最小化高阶残差统计量的变化来选择嵌入位置；WOW\supercite{holub2012designing}利用小波变换获取像素权重，优先在纹理复杂区域嵌入；S-UNIWARD\supercite{holub2014universal}在空间域和JPEG域统一使用方向滤波器组计算嵌入代价，是目前抗检测能力较强的方法之一。
+
+\subsubsection{变换域隐写}
+
+变换域隐写在图像经过某种数学变换（如离散余弦变换 DCT、离散小波变换 DWT）后的系数上嵌入信息。典型代表是 JPEG 域隐写，如 F5 算法\supercite{westfeld2001f5}通过减小DCT系数的绝对值嵌入信息，nsF5\supercite{fridrich2007statistically}进一步避免了收缩问题，J-UNIWARD\supercite{holub2014universal}则实现了最优的嵌入代价分配。
+
+\subsubsection{基于生成模型的隐写}
+
+与修改已有图像不同，基于生成模型的隐写方法直接在图像生成过程中嵌入信息，不需要已有的载体图像。这类方法利用深度生成模型（如 GAN、VAE、Flow、扩散模型）采样过程中的随机性嵌入秘密信息，使得含密图像与模型正常输出的图像在分布上完全一致，从根本上消除了隐写痕迹\supercite{de2022perfectly}。
+
+\subsection{可证安全隐写理论}
+
+\subsubsection{信息论安全模型}
+
+可证安全隐写（Provably Secure Steganography）的理论基础源于 Cachin\supercite{cachin2004information}和 Hopper 等人\supercite{hopper2009provably}的工作。其核心思想可以用信息论的语言形式化描述：
+
+设 $P_C$ 表示正常载体（Cover）的分布，$P_S$ 表示含密载体（Stego）的分布。隐写系统的安全性通过两个分布之间的统计距离来度量。常用的度量指标为 KL 散度（Kullback-Leibler Divergence）：
+
+\begin{equation}\label{eq:kl}
+    D_{KL}(P_S \| P_C) = \sum_{x} P_S(x) \log \frac{P_S(x)}{P_C(x)}
+\end{equation}
+
+\subsubsection{Cachin 安全准则}
+
+Cachin\supercite{cachin2004information}提出了基于 KL 散度的隐写安全性分级：
+
+\begin{itemize}
+    \item \textbf{完美安全（$\epsilon$-secure，$\epsilon=0$）}：若 $D_{KL}(P_S \| P_C) = 0$，即含密载体与正常载体的分布完全一致，则任何检测器都无法以优于随机猜测的概率检测隐写行为。
+    \item \textbf{近似安全（$\epsilon$-secure，$\epsilon > 0$）}：若 $D_{KL}(P_S \| P_C) \leq \epsilon$，其中 $\epsilon$ 为一个很小的正数，则隐写系统具有近似安全性。
+\end{itemize}
+
+实现完美安全的关键在于：隐写编码过程不能对载体分布引入任何偏差。基于生成模型的隐写方案通过在模型的采样过程中嵌入信息，天然地满足了这一要求——因为含密图像也是由同一个生成模型产生的，其分布与正常生成图像完全一致。
+
+\subsection{Pulsar 算法原理}\label{sec:pulsar}
+
+Pulsar\supercite{chen2024pulsar}是一种基于扩散模型（Diffusion Model）的可证安全图像隐写算法，通过将秘密信息编码为扩散模型逆向采样过程中的伪随机噪声序列，实现高容量、高质量的隐写嵌入。
+
+\subsubsection{扩散模型基础}
+
+扩散模型\supercite{ho2020denoising}是一类通过逐步去噪过程生成数据的深度生成模型，主要包含前向扩散过程和逆向去噪过程：
+
+\textbf{前向扩散过程}：从真实数据 $x_0$ 出发，逐步添加高斯噪声，经过 $T$ 步后得到近似纯噪声 $x_T \sim \mathcal{N}(0, I)$：
+
+\begin{equation}\label{eq:forward}
+    q(x_t | x_{t-1}) = \mathcal{N}(x_t; \sqrt{1-\beta_t} x_{t-1}, \beta_t I)
+\end{equation}
+
+其中 $\beta_t$ 为预定义的噪声调度参数。
+
+\textbf{逆向去噪过程}：训练一个神经网络 $\epsilon_\theta$ 预测每一步的噪声，从纯噪声 $x_T$ 开始逐步去噪恢复图像：
+
+\begin{equation}\label{eq:reverse}
+    p_\theta(x_{t-1} | x_t) = \mathcal{N}(x_{t-1}; \mu_\theta(x_t, t), \sigma_t^2 I)
+\end{equation}
+
+其中 $\mu_\theta$ 由模型预测的噪声计算得出，$\sigma_t$ 为方差系数。每步去噪都需要引入随机噪声 $z_t \sim \mathcal{N}(0, I)$。
+
+\subsubsection{Pulsar 隐写编码原理}
+
+Pulsar 算法的核心思想是：利用逆向去噪过程中每一步所需的随机噪声 $z_t$ 作为信息嵌入的载体。具体而言，Pulsar 使用伪随机数生成器（PRG）和算术编码的组合，将秘密消息编码为控制去噪采样的噪声向量。
+
+Pulsar 的嵌入过程主要分为以下步骤：
+
+\begin{enumerate}
+    \item \textbf{密钥初始化}：使用共享密钥 $K$ 初始化伪随机数生成器，生成确定性的初始噪声 $x_T$ 和每步的基础噪声。
+    \item \textbf{区域估计}：在编码步执行两次前向计算——分别使用"全0"噪声和"全1"噪声生成两幅参考图像，根据两幅图像像素差异的大小将图像划分为不同的编码区域，并为每个区域分配合适的纠错码参数。
+    \item \textbf{消息编码}：使用 Sage 纠错码对秘密消息进行编码，生成编码后的比特序列。将编码比特映射到对应区域的像素位置，控制该位置使用"全0"还是"全1"噪声向量。
+    \item \textbf{图像生成}：使用编码后的噪声向量完成扩散模型的逆向采样过程，生成含密图像。
+\end{enumerate}
+
+% TODO: 添加 Pulsar 嵌入流程图
+% \begin{figure}[htb!]
+%     \centering
+%     \includegraphics[width=0.9\textwidth]{img/pulsar_flow.pdf}
+%     \caption{Pulsar 算法嵌入流程}
+%     \label{fig:pulsar_flow}
+% \end{figure}
+
+\subsubsection{Pulsar 消息提取}
+
+提取过程是嵌入的逆操作：
+
+\begin{enumerate}
+    \item \textbf{密钥恢复}：接收方使用相同的共享密钥 $K$ 初始化伪随机数生成器，恢复与发送方相同的初始噪声和区域划分。
+    \item \textbf{参考图像生成}：分别使用"全0"和"全1"噪声生成两幅参考图像。
+    \item \textbf{比特恢复}：对于含密图像的每个编码像素，计算其与两幅参考图像对应像素的距离，取距离更近的一方对应的比特值作为恢复值。
+    \item \textbf{消息解码}：使用 Sage 纠错码对恢复的比特序列进行解码，还原秘密消息。
+\end{enumerate}
+
+\subsubsection{纠错编码机制}
+
+由于图像在存储和传输过程中可能引入精度损失，Pulsar 采用基于 Sage 数学系统的纠错码来增强鲁棒性。系统根据不同区域的误码率自动选择合适的纠错码参数，使用 Reed-Solomon 码作为外码、Reed-Muller 码或 BCH 码作为内码的级联编码方案，在不同信道条件下实现可靠的消息传输。
+
+\subsubsection{安全性分析}
+
+Pulsar 的可证安全性基于以下事实：含密图像与正常图像都是由同一扩散模型生成的，差异仅在于采样过程中使用的随机噪声来源不同。由于正常生成使用的是真随机数，而隐写生成使用的是密码学安全的伪随机数（PRG），在不知道密钥的情况下，两者生成的噪声序列在计算上不可区分。因此，含密图像与正常图像在统计分布上也不可区分，满足 Cachin 安全准则中的完美安全条件。
+
+\subsection{关键技术栈}\label{sec:techstack}
+
+\subsubsection{FastAPI 框架}
+
+FastAPI\supercite{fastapi}是一个基于 Python 的现代 Web 框架，具有以下特点：
+
+\begin{itemize}
+    \item 基于 ASGI（Asynchronous Server Gateway Interface）标准，原生支持异步编程。
+    \item 自动生成 OpenAPI 文档和交互式 API 测试界面。
+    \item 基于 Python 类型注解的请求参数验证和序列化。
+    \item 高性能，与 Node.js 和 Go 等框架性能相当。
+\end{itemize}
+
+本系统使用 FastAPI 构建服务端 RESTful API 和 WebSocket 服务。
+
+\subsubsection{WebSocket 协议}
+
+WebSocket 是一种在单个 TCP 连接上进行全双工通信的协议\supercite{fette2011websocket}。与传统的 HTTP 请求-响应模式不同，WebSocket 允许服务端主动向客户端推送消息，适用于实时通信场景。本系统使用 WebSocket 实现即时消息推送、在线状态感知和好友请求通知等功能。
+
+\subsubsection{Jetpack Compose}
+
+Jetpack Compose\supercite{jetpackcompose}是 Google 推出的 Android 现代声明式 UI 框架。与传统的 XML 布局相比，Compose 直接使用 Kotlin 代码描述 UI，支持响应式编程模型，代码更简洁，开发效率更高。本系统的 Android 客户端完全基于 Jetpack Compose 构建。
+
+\subsubsection{Vue.js 3}
+
+Vue.js 3\supercite{vuejs}是一个渐进式 JavaScript 前端框架，采用组合式 API（Composition API）提供更灵活的逻辑复用能力。本系统使用 Vue.js 3 配合 TypeScript 开发 Web 客户端，使用 Pinia 进行状态管理，使用 Vue Router 管理页面路由。
+
+\subsubsection{本地存储技术}
+
+为实现离线数据持久化，系统在不同平台采用了相应的本地存储方案：
+
+\begin{itemize}
+    \item \textbf{SQLite}：服务端使用 SQLite 作为轻量级关系型数据库，通过 aiosqlite 库实现异步操作。
+    \item \textbf{Room}：Android 客户端使用 Room 持久化库，它是 SQLite 的抽象层，提供编译时 SQL 验证和与 Kotlin 协程的无缝集成。
+    \item \textbf{IndexedDB}：Web 客户端使用 IndexedDB 浏览器端数据库存储聊天记录和用户数据，通过 Dexie.js 库简化操作。
+\end{itemize}
+
+\subsection{本章小结}
+
+本章介绍了图像隐写术的基本概念和分类，阐述了可证安全隐写的理论基础和 Cachin 安全准则，详细分析了 Pulsar 算法的嵌入、提取和纠错编码机制，并介绍了系统开发涉及的关键技术栈。这些理论和技术为后续的系统设计与实现奠定了基础。

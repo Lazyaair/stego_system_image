@@ -1,0 +1,41 @@
+\documentclass[mode=final,font=fandol]{hfut}
+
+% 各项信息，请注意填写
+\input{tex/info}
+
+\begin{document}
+\newgeometry{left=3cm, right=3cm, top=2.54cm, bottom=2.54cm}
+% 封面
+\include{tex/pages/cover}
+% 中文题目页
+\include{tex/pages/chinese_title}
+% 英文题目页
+\include{tex/pages/english_title}
+
+\newgeometry{left=2.8cm, right=2.8cm, top=3.14cm, bottom=3.14cm}
+% 声明页
+\include{tex/pages/statement}
+
+\pagenumbering{Roman}
+% 摘要页
+\include{tex/abstract}
+% 目录页
+\include{tex/pages/toc}
+
+% 正文
+\pagenumbering{arabic}
+\pagestyle{contentstyle}
+\include{tex/introduction}
+\include{tex/chapter2}
+\include{tex/chapter3}
+\include{tex/chapter4}
+\include{tex/chapter5}
+\include{tex/chapter6}
+
+% 参考文献
+\printbibliography[heading=hfut]
+% 致谢页
+\include{tex/acknowledge}
+% 附录页，如不需要请注释掉
+\include{tex/appendix}
+\end{document}

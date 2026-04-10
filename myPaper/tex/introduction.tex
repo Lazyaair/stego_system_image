@@ -1,0 +1,79 @@
+\section{绪论}\label{chap:introduction}
+
+\subsection{研究背景与意义}
+
+随着互联网技术的飞速发展和数字化进程的深入推进，网络已经成为人们日常生活中不可或缺的信息交流渠道。然而，网络通信的开放性和共享性也带来了严峻的信息安全挑战。政府、企业和个人的敏感信息在传输过程中面临着被窃取、篡改和监控的风险\supercite{fridrich2009steganography}。传统的加密技术虽然能够保护信息内容的机密性，但加密通信行为本身容易引起监控者的注意，从而招致进一步的审查和干预。
+
+信息隐藏技术（Information Hiding）为解决上述问题提供了一种独特的思路。与加密技术不同，信息隐藏并不改变通信形式的外观，而是将秘密信息嵌入到看似正常的载体媒体（如图像、音频、视频等）中，使得通信双方的交互在外部观察者看来与正常通信无异\supercite{katzenbeisser2000information}。图像隐写术（Image Steganography）作为信息隐藏技术的重要分支，因其载体图像在网络中传输量大、格式多样、视觉冗余丰富等特点，成为研究最为活跃的方向之一。
+
+早期的图像隐写方法主要基于空间域修改策略，如最低有效位（Least Significant Bit, LSB）替换\supercite{chan2004hiding}。这类方法实现简单，但嵌入操作会不可避免地改变载体图像的统计特性，容易被统计隐写分析方法检测\supercite{fridrich2012rich}。随着深度学习技术的发展，基于卷积神经网络的隐写分析工具（如 SRNet\supercite{boroumand2019deep}）展现出了极强的检测能力，对传统隐写方法构成了严重威胁。
+
+为了从根本上解决隐写安全性问题，研究者提出了可证安全隐写（Provably Secure Steganography）的理论框架\supercite{hopper2009provably}。该理论指出，如果隐写系统生成的含密载体分布与正常载体分布在统计上不可区分（即 KL 散度为零），则任何检测器都无法以优于随机猜测的概率检测出隐写行为。近年来，基于深度生成模型（如变分自编码器 VAE、生成对抗网络 GAN、扩散模型 Diffusion Model）的隐写方案为实现可证安全提供了新的技术路径\supercite{de2022perfectly}。
+
+本文的研究正是在上述背景下展开的。本文选择基于扩散模型的 Pulsar 算法\supercite{chen2024pulsar}作为核心隐写方案，设计并实现一个完整的可证安全图像隐写通信系统。该系统将可证安全隐写理论与实际工程应用相结合，支持多平台（Android、Web）的隐蔽即时通信，具有以下意义：
+
+\begin{enumerate}
+    \item \textbf{理论意义}：将可证安全隐写的理论成果应用于实际系统中，验证其在工程环境下的可行性和有效性。
+    \item \textbf{应用意义}：为用户提供一种安全、便捷的隐蔽通信工具，满足隐私保护和安全通信的实际需求。
+    \item \textbf{技术意义}：探索扩散模型在隐写领域的应用，为后续研究提供参考实现和工程经验。
+\end{enumerate}
+
+\subsection{国内外研究现状}
+
+\subsubsection{传统图像隐写方法}
+
+传统图像隐写方法可大致分为空间域方法和变换域方法两大类。
+
+空间域隐写方法直接在图像像素值上进行修改。最经典的是 LSB 替换方法，通过将秘密信息的比特替换载体图像像素的最低有效位实现嵌入\supercite{chan2004hiding}。为了减小嵌入对图像统计特性的影响，研究者提出了 LSB 匹配\supercite{mielikainen2006lsb}、HUGO（Highly Undetectable Stego）\supercite{pevny2010using}、WOW（Wavelet Obtained Weights）\supercite{holub2012designing}和 S-UNIWARD\supercite{holub2014universal}等自适应隐写方法，通过最小化嵌入失真函数来优化嵌入位置的选择。
+
+变换域隐写方法在图像的频域或其他变换域中嵌入信息。典型的方法包括基于离散余弦变换（DCT）的 JPEG 域隐写\supercite{westfeld2001f5}，如 F5 算法、nsF5 算法\supercite{fridrich2007statistically}和 J-UNIWARD\supercite{holub2014universal}等。
+
+尽管上述方法在降低可检测性方面取得了显著进展，但由于嵌入操作本质上是对已有载体的修改，不可避免地会引入统计痕迹，无法在理论上保证绝对安全。
+
+\subsubsection{基于深度学习的隐写分析}
+
+隐写分析（Steganalysis）旨在检测载体中是否隐藏了秘密信息。传统隐写分析方法依赖手工设计的特征提取器，如 SRM（Spatial Rich Model）\supercite{fridrich2012rich}。随着深度学习的兴起，基于卷积神经网络的隐写分析方法展现了更优异的检测性能。代表性工作包括 Xu-Net\supercite{xu2016structural}、Ye-Net\supercite{ye2017deep}和 SRNet\supercite{boroumand2019deep}等。这些方法能够自动学习隐写特征，对多种隐写方案都具有较高的检测准确率，进一步凸显了传统隐写方法在安全性方面的不足。
+
+\subsubsection{可证安全隐写}
+
+可证安全隐写的理论基础由 Hopper 等人\supercite{hopper2009provably}奠定。其核心思想是：隐写系统的安全性可以归结为含密载体分布与正常载体分布之间的统计距离（如 KL 散度）。若两者分布完全一致，则隐写系统是完美安全的（Perfectly Secure）。Cachin\supercite{cachin2004information}进一步从信息论角度形式化了这一安全准则。
+
+实现可证安全的关键在于隐写编码过程不能对载体分布引入任何偏差。基于深度生成模型的隐写方案通过在模型的采样过程中嵌入信息，天然地满足了这一要求。代表性工作包括：
+
+\begin{itemize}
+    \item 基于 GAN 的方案：利用 GAN 的随机输入向量（latent code）嵌入信息\supercite{hu2018novel}。
+    \item 基于 VAE 的方案：在变分自编码器的隐变量采样过程中嵌入信息。
+    \item 基于 Flow 的方案：利用可逆归一化流模型的采样过程嵌入信息\supercite{de2022perfectly}。
+    \item 基于扩散模型的方案：利用扩散模型逆向去噪采样过程中的随机性嵌入信息。Pulsar\supercite{chen2024pulsar}是该方向的代表性工作，通过算术编码将秘密信息映射为扩散模型每一步去噪采样的伪随机数序列，实现了高容量、高质量的可证安全隐写。
+\end{itemize}
+
+与其他生成模型相比，扩散模型生成的图像质量更高、多样性更好，是当前最有前景的可证安全隐写载体。
+
+\subsection{主要研究内容}
+
+本文围绕可证安全图像隐写系统的设计与实现，开展了以下主要工作：
+
+\begin{enumerate}
+    \item \textbf{系统架构设计}：设计了基于客户端--服务端的跨平台隐写通信系统架构，服务端负责隐写算法计算和消息路由，客户端（Android 和 Web）负责用户交互和本地数据管理。
+    \item \textbf{Pulsar 算法集成}：将基于扩散模型的 Pulsar 可证安全隐写算法集成到服务端，实现了消息嵌入和提取的 API 接口，支持容量查询和密钥管理。
+    \item \textbf{实时通信系统}：基于 WebSocket 协议实现了服务端与客户端之间的实时双向通信，支持在线状态感知、消息即时推送和离线消息缓存。
+    \item \textbf{用户体系与好友管理}：实现了完整的用户注册登录系统（JWT 认证）、邀请码机制的好友添加功能，以及单端登录安全策略。
+    \item \textbf{多平台客户端开发}：分别使用 Kotlin Jetpack Compose 和 Vue.js 3 开发了功能完整的 Android 和 Web 客户端，实现了普通消息与隐写消息的无缝切换。
+    \item \textbf{系统测试与验证}：对系统各项功能进行了全面测试，验证了系统的正确性、稳定性和跨平台兼容性。
+\end{enumerate}
+
+\subsection{论文组织结构}
+
+本文共分为六章，各章内容安排如下：
+
+\textbf{第一章 绪论}：介绍了研究背景与意义，综述了国内外图像隐写术的研究现状，阐述了本文的主要研究内容和论文组织结构。
+
+\textbf{第二章 相关技术与理论基础}：介绍了图像隐写术的基本概念、可证安全隐写的理论基础、Pulsar 算法的工作原理，以及系统开发所涉及的关键技术栈。
+
+\textbf{第三章 系统设计}：从需求分析出发，详细阐述了系统的总体架构设计、服务端设计、客户端设计和安全设计方案。
+
+\textbf{第四章 系统实现}：分别介绍了服务端、Android 客户端和 Web 客户端的具体实现过程，以及关键功能的实现细节。
+
+\textbf{第五章 系统测试与分析}：描述了系统的测试环境、功能测试、隐写性能分析和跨平台兼容性测试的过程与结果。
+
+\textbf{第六章 总结与展望}：总结了本文的主要工作和贡献，分析了系统的不足之处，并对未来的研究方向进行了展望。
