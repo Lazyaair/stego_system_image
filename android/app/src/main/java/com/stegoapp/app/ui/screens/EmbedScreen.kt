@@ -32,7 +32,7 @@ import java.io.OutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EmbedScreen() {
+fun EmbedScreen(onNavigateToExtract: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -149,10 +149,11 @@ fun EmbedScreen() {
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Text(
-            text = "消息嵌入",
-            style = MaterialTheme.typography.headlineMedium
-        )
+        // Tab 切换栏
+        TabRow(selectedTabIndex = 0) {
+            Tab(selected = true, onClick = {}, text = { Text("消息嵌入") })
+            Tab(selected = false, onClick = onNavigateToExtract, text = { Text("消息提取") })
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 

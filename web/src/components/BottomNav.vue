@@ -11,6 +11,9 @@ const tabs = [
 ]
 
 function isActive(path: string): boolean {
+  if (path === '/embed') {
+    return route.path === '/embed' || route.path === '/extract'
+  }
   return route.path.startsWith(path)
 }
 </script>

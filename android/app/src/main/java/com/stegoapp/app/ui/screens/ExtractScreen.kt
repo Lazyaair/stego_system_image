@@ -29,7 +29,7 @@ import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExtractScreen() {
+fun ExtractScreen(onNavigateToEmbed: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -135,10 +135,11 @@ fun ExtractScreen() {
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Text(
-            text = "消息提取",
-            style = MaterialTheme.typography.headlineMedium
-        )
+        // Tab 切换栏
+        TabRow(selectedTabIndex = 1) {
+            Tab(selected = false, onClick = onNavigateToEmbed, text = { Text("消息嵌入") })
+            Tab(selected = true, onClick = {}, text = { Text("消息提取") })
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 

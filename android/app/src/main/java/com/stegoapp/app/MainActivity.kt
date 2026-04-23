@@ -102,7 +102,7 @@ fun MainApp(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val showBottomBar = isAuthenticated && currentRoute in navItems.map { it.route }
+    val showBottomBar = isAuthenticated && (currentRoute in navItems.map { it.route } || currentRoute == Screen.Extract.route)
 
     Scaffold(
         bottomBar = {
@@ -112,7 +112,7 @@ fun MainApp(
                         NavigationBarItem(
                             icon = { Icon(item.icon, contentDescription = item.label) },
                             label = { Text(item.label) },
-                            selected = currentRoute == item.route,
+                            selected = currentRoute == item.route || (item.route == Screen.Embed.route && currentRoute == Screen.Extract.route),
                             onClick = {
                                 navController.navigate(item.route) {
                                     popUpTo(Screen.ChatList.route) { saveState = true }

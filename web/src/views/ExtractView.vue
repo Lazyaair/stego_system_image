@@ -66,7 +66,10 @@ async function handleExtract() {
 
 <template>
   <div class="extract-view">
-    <h1>消息提取</h1>
+    <div class="tab-bar">
+      <router-link to="/embed" class="tab">消息嵌入</router-link>
+      <router-link to="/extract" class="tab active">消息提取</router-link>
+    </div>
 
     <div class="form-group">
       <label>选择模型 (需与嵌入时使用的模型相同)</label>
@@ -112,6 +115,28 @@ async function handleExtract() {
 
 <style scoped>
 .extract-view { max-width: 600px; }
+.tab-bar {
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e0e0e0;
+}
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 12px 0;
+  text-decoration: none;
+  color: #888;
+  font-size: 16px;
+  font-weight: bold;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.2s, border-color 0.2s;
+}
+.tab:hover { color: #333; }
+.tab.active {
+  color: #42b883;
+  border-bottom-color: #42b883;
+}
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; margin-bottom: 4px; font-weight: bold; }
 .form-group input,

@@ -101,6 +101,7 @@ Web 前端默认运行在 `http://localhost:5173`。
 | GET | `/api/v1/invite/my-code` | 获取自己的邀请码 |
 | POST | `/api/v1/invite/reset` | 重置邀请码 |
 | GET | `/api/v1/invite/lookup/{code}` | 通过邀请码查询用户 |
+| GET | `/api/v1/invite/user-code/{user_id}` | 通过用户ID获取邀请码 |
 
 ### 隐写服务
 
@@ -109,6 +110,7 @@ Web 前端默认运行在 `http://localhost:5173`。
 | POST | `/api/v1/stego/embed` | 嵌入消息到图像 |
 | POST | `/api/v1/stego/extract` | 从图像提取消息 |
 | POST | `/api/v1/stego/check-capacity` | 检查嵌入容量 |
+| GET | `/api/v1/stego/max-capacity` | 获取最大嵌入容量 |
 
 ### WebSocket
 

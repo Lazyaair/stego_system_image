@@ -129,7 +129,21 @@ fun NavGraph(
                 }
             )
         }
-        composable(Screen.Embed.route) { EmbedScreen() }
-        composable(Screen.Extract.route) { ExtractScreen() }
+        composable(Screen.Embed.route) {
+            EmbedScreen(onNavigateToExtract = {
+                navController.navigate(Screen.Extract.route) {
+                    popUpTo(Screen.Embed.route) { inclusive = true }
+                    launchSingleTop = true
+                }
+            })
+        }
+        composable(Screen.Extract.route) {
+            ExtractScreen(onNavigateToEmbed = {
+                navController.navigate(Screen.Embed.route) {
+                    popUpTo(Screen.Extract.route) { inclusive = true }
+                    launchSingleTop = true
+                }
+            })
+        }
     }
 }
