@@ -3,3 +3,9 @@ __pycache__/
 *.db
 *.db-wal
 *.db-shm
+
+# Superpowers skill local runtime data
+.superpowers/
+
+# External Pulsar project (checked out locally, not part of this repo)
+pulsar/
