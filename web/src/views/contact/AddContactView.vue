@@ -17,7 +17,7 @@ async function handleAdd() {
     const contact = await contactsStore.addContactByCode(code.value.trim())
     router.push(`/chat/${contact.user_id}`)
   } catch (e: any) {
-    error.value = e.response?.data?.detail || 'Invalid invite code'
+    error.value = e.response?.data?.detail || '无效的邀请码'
   } finally {
     loading.value = false
   }
@@ -25,59 +25,43 @@ async function handleAdd() {
 </script>
 
 <template>
-  <div class="add-contact">
-    <div class="header">
-      <button class="back-btn" @click="router.back()">&#8592;</button>
-      <h2>Add Contact</h2>
-    </div>
-    <form @submit.prevent="handleAdd" class="form">
-      <div class="form-group">
-        <label>Invite Code</label>
-        <input v-model="code" type="text" placeholder="Enter invite code" required />
-      </div>
-      <p v-if="error" class="error">{{ error }}</p>
-      <button type="submit" :disabled="loading || !code.trim()">
-        {{ loading ? 'Looking up...' : 'Add Contact' }}
+  <div class="h-full flex flex-col">
+    <!-- Header -->
+    <div class="flex items-center gap-3 px-6 py-5 border-b border-outline-variant/10">
+      <button @click="router.back()" class="text-on-surface-variant hover:text-on-surface transition-colors">
+        <span class="material-symbols-outlined">arrow_back</span>
       </button>
-    </form>
+      <h2 class="text-xl font-bold text-on-surface">添加联系人</h2>
+    </div>
+
+    <!-- Form -->
+    <div class="max-w-md mx-auto w-full px-6 py-8">
+      <form @submit.prevent="handleAdd" class="space-y-6">
+        <div class="space-y-2">
+          <label class="text-xs font-bold text-on-surface-variant uppercase ml-1">邀请码</label>
+          <div class="relative group">
+            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50 group-focus-within:text-primary transition-colors">qr_code</span>
+            <input
+              v-model="code"
+              type="text"
+              placeholder="输入对方的邀请码"
+              required
+              class="w-full bg-surface-container/50 border border-outline-variant/20 rounded-xl py-4 pl-12 pr-4 text-on-surface focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all outline-none"
+            />
+          </div>
+        </div>
+
+        <p v-if="error" class="text-error text-sm">{{ error }}</p>
+
+        <button
+          type="submit"
+          :disabled="loading || !code.trim()"
+          class="w-full py-4 bg-primary text-on-primary font-bold rounded-xl shadow-lg shadow-primary/30 hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <span class="material-symbols-outlined text-xl">person_add</span>
+          {{ loading ? '查找中...' : '添加联系人' }}
+        </button>
+      </form>
+    </div>
   </div>
 </template>
-
-<style scoped>
-.add-contact { padding: 0; }
-.header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-}
-.back-btn {
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-}
-.form { padding: 0 16px; }
-.form-group { margin-bottom: 16px; }
-.form-group label { display: block; margin-bottom: 4px; font-weight: 500; }
-.form-group input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 14px;
-  box-sizing: border-box;
-}
-button[type="submit"] {
-  width: 100%;
-  padding: 10px;
-  background: #4a90d9;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 16px;
-  cursor: pointer;
-}
-button:disabled { opacity: 0.5; }
-.error { color: #e53e3e; font-size: 14px; }
-</style>

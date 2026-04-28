@@ -14,69 +14,41 @@ function openChat(userId: string) {
 </script>
 
 <template>
-  <div class="contacts-view">
-    <div class="header">
-      <h2>Contacts</h2>
-      <router-link to="/contacts/add" class="add-btn">+ Add</router-link>
+  <div class="h-full flex flex-col">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-5 border-b border-outline-variant/10">
+      <h2 class="text-xl font-bold text-on-surface">联系人</h2>
+      <router-link
+        to="/contacts/add"
+        class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-semibold hover:bg-primary/80 transition-colors"
+      >
+        <span class="material-symbols-outlined text-lg">person_add</span>
+        添加
+      </router-link>
     </div>
-    <div v-if="contactsStore.contacts.length === 0" class="empty">
-      <p>No contacts yet</p>
+
+    <!-- Empty State -->
+    <div v-if="contactsStore.contacts.length === 0" class="flex-1 flex flex-col items-center justify-center text-on-surface-variant gap-4">
+      <span class="material-symbols-outlined text-6xl opacity-30">people</span>
+      <p class="text-sm">暂无联系人</p>
     </div>
-    <div
-      v-for="contact in contactsStore.contacts"
-      :key="contact.user_id"
-      class="contact-item"
-      @click="openChat(contact.user_id)"
-    >
-      <div class="avatar">{{ (contact.nickname || contact.username)[0].toUpperCase() }}</div>
-      <div class="info">
-        <div class="name">{{ contact.nickname || contact.username }}</div>
-        <div class="username">@{{ contact.username }}</div>
+
+    <!-- Contact List -->
+    <div v-else class="flex-1 overflow-y-auto">
+      <div
+        v-for="contact in contactsStore.contacts"
+        :key="contact.user_id"
+        class="flex items-center gap-4 px-6 py-4 cursor-pointer hover:bg-surface-container-high transition-colors border-b border-outline-variant/5"
+        @click="openChat(contact.user_id)"
+      >
+        <div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold flex-shrink-0">
+          {{ (contact.nickname || contact.username)[0].toUpperCase() }}
+        </div>
+        <div class="min-w-0">
+          <div class="font-semibold text-on-surface text-sm">{{ contact.nickname || contact.username }}</div>
+          <div class="text-xs text-on-surface-variant">@{{ contact.username }}</div>
+        </div>
       </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-}
-.add-btn {
-  background: #4a90d9;
-  color: white;
-  padding: 6px 14px;
-  border-radius: 6px;
-  text-decoration: none;
-  font-size: 14px;
-}
-.empty {
-  text-align: center;
-  padding: 60px 20px;
-  color: #888;
-}
-.contact-item {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-}
-.contact-item:hover { background: #f8f8f8; }
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #4a90d9;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-}
-.info { margin-left: 12px; }
-.name { font-weight: 500; }
-.username { font-size: 13px; color: #888; }
-</style>

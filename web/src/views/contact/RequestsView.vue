@@ -60,113 +60,50 @@ async function block(index: number) {
 </script>
 
 <template>
-  <div class="requests-view">
-    <div class="header">
-      <button class="back-btn" @click="router.back()">&#8592;</button>
-      <h2>Friend Requests</h2>
+  <div class="h-full flex flex-col">
+    <!-- Header -->
+    <div class="flex items-center gap-3 px-6 py-5 border-b border-outline-variant/10">
+      <button @click="router.back()" class="text-on-surface-variant hover:text-on-surface transition-colors">
+        <span class="material-symbols-outlined">arrow_back</span>
+      </button>
+      <h2 class="text-xl font-bold text-on-surface">好友请求</h2>
     </div>
-    <div v-if="chatStore.pendingRequests.length === 0" class="empty">
-      <p>No pending requests</p>
+
+    <!-- Empty State -->
+    <div v-if="chatStore.pendingRequests.length === 0" class="flex-1 flex flex-col items-center justify-center text-on-surface-variant gap-4">
+      <span class="material-symbols-outlined text-6xl opacity-30">mail</span>
+      <p class="text-sm">暂无待处理的请求</p>
     </div>
-    <div
-      v-for="(req, index) in chatStore.pendingRequests"
-      :key="req.userId"
-      class="request-item"
-    >
-      <div class="avatar">{{ req.username[0].toUpperCase() }}</div>
-      <div class="info">
-        <div class="name">{{ req.username }}</div>
-        <div class="preview">wants to be your friend</div>
-      </div>
-      <div class="actions">
-        <button class="accept-btn" @click="accept(index)">Accept</button>
-        <button class="reject-btn" @click="reject(index)">Ignore</button>
-        <button class="block-btn" @click="block(index)">Block</button>
+
+    <!-- Request List -->
+    <div v-else class="flex-1 overflow-y-auto">
+      <div
+        v-for="(req, index) in chatStore.pendingRequests"
+        :key="req.userId"
+        class="flex items-center gap-4 px-6 py-4 border-b border-outline-variant/5"
+      >
+        <div class="w-11 h-11 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center font-bold text-lg flex-shrink-0">
+          {{ req.username[0].toUpperCase() }}
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-on-surface text-sm">{{ req.username }}</div>
+          <div class="text-xs text-on-surface-variant mt-0.5">请求添加为好友</div>
+        </div>
+        <div class="flex gap-2 flex-shrink-0">
+          <button
+            @click="accept(index)"
+            class="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-bold hover:bg-primary/80 transition-colors"
+          >接受</button>
+          <button
+            @click="reject(index)"
+            class="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface text-xs font-medium hover:bg-surface-variant transition-colors"
+          >忽略</button>
+          <button
+            @click="block(index)"
+            class="px-3 py-1.5 rounded-lg border border-error/30 text-error text-xs font-medium hover:bg-error/5 transition-colors"
+          >拉黑</button>
+        </div>
       </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-}
-.back-btn {
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-}
-.empty {
-  text-align: center;
-  padding: 60px 20px;
-  color: #888;
-}
-.request-item {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f0f0f0;
-}
-.avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: #f0a030;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 18px;
-  flex-shrink: 0;
-}
-.info {
-  flex: 1;
-  margin-left: 12px;
-  overflow: hidden;
-}
-.name { font-weight: 500; }
-.preview {
-  font-size: 13px;
-  color: #888;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.actions {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-}
-.accept-btn {
-  padding: 6px 12px;
-  background: #4a90d9;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-}
-.reject-btn {
-  padding: 6px 12px;
-  background: #e0e0e0;
-  color: #333;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-}
-.block-btn {
-  padding: 6px 12px;
-  background: white;
-  color: #e53e3e;
-  border: 1px solid #e53e3e;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-}
-</style>
