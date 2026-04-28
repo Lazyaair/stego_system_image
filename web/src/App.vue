@@ -5,7 +5,7 @@ import { useAuthStore } from './stores/auth'
 import { useChatStore } from './stores/chat'
 import { useContactsStore } from './stores/contacts'
 import { wsClient } from './api/websocket'
-import BottomNav from './components/BottomNav.vue'
+import SideNav from './components/SideNav.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,9 +15,7 @@ const contactsStore = useContactsStore()
 
 const showNav = computed(() => {
   const guestRoutes = ['/login', '/register']
-  const fullScreenRoutes = ['/chat/']
   if (guestRoutes.includes(route.path)) return false
-  if (fullScreenRoutes.some((r) => route.path.startsWith(r))) return false
   return auth.isAuthenticated
 })
 
@@ -25,7 +23,7 @@ const showNav = computed(() => {
 function onKicked() {
   auth.onKicked()
   router.push('/login')
-  alert('You have been logged in on another device.')
+  alert('您的账号已在其他设备登录。')
 }
 onMounted(() => window.addEventListener('ws-kicked', onKicked))
 onUnmounted(() => window.removeEventListener('ws-kicked', onKicked))
@@ -47,23 +45,10 @@ watch(
 </script>
 
 <template>
-  <div class="app" :class="{ 'has-nav': showNav }">
-    <router-view />
-    <BottomNav v-if="showNav" />
+  <div class="flex h-screen overflow-hidden bg-surface">
+    <SideNav v-if="showNav" />
+    <main class="flex-1 overflow-y-auto">
+      <router-view />
+    </main>
   </div>
 </template>
-
-<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #fff;
-}
-.app.has-nav {
-  padding-bottom: 60px;
-}
-</style>

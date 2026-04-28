@@ -6,12 +6,12 @@ const router = createRouter({
     { path: '/', redirect: '/chats' },
     {
       path: '/login',
-      component: () => import('../views/auth/LoginView.vue'),
+      component: () => import('../views/auth/AuthView.vue'),
       meta: { guest: true },
     },
     {
       path: '/register',
-      component: () => import('../views/auth/RegisterView.vue'),
+      component: () => import('../views/auth/AuthView.vue'),
       meta: { guest: true },
     },
     {
