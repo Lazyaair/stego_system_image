@@ -97,156 +97,95 @@ function downloadImage() {
 </script>
 
 <template>
-  <div class="embed-view">
-    <div class="tab-bar">
-      <router-link to="/embed" class="tab active">消息嵌入</router-link>
-      <router-link to="/extract" class="tab">消息提取</router-link>
+  <div class="max-w-2xl mx-auto py-8 px-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+      <h1 class="text-3xl font-extrabold tracking-tight text-on-surface mb-1">隐写工具箱</h1>
+      <p class="text-on-surface-variant text-sm font-medium opacity-70">基于 Pulsar 算法的可证安全图像隐写</p>
     </div>
 
-    <div class="form-group">
-      <label>选择模型</label>
-      <select v-model="selectedModel">
-        <option v-for="m in models" :key="m.id" :value="m.id">
-          {{ m.name }}
-        </option>
-      </select>
+    <!-- Tab Bar -->
+    <div class="flex border-b border-outline-variant/20 mb-8">
+      <router-link
+        to="/embed"
+        class="flex-1 py-3 text-center text-sm font-bold uppercase tracking-wider transition-all text-primary border-b-2 border-primary"
+      >消息嵌入</router-link>
+      <router-link
+        to="/extract"
+        class="flex-1 py-3 text-center text-sm font-bold uppercase tracking-wider transition-all text-on-surface-variant hover:text-on-surface border-b-2 border-transparent"
+      >消息提取</router-link>
     </div>
 
-    <div class="form-group">
-      <label>秘密消息</label>
-      <textarea
-        v-model="message"
-        rows="4"
-        placeholder="输入要隐藏的秘密消息..."
-        @blur="checkCapacity"
-      ></textarea>
-      <div v-if="capacityInfo" class="capacity-info" :class="{ invalid: !capacityInfo.valid }">
-        消息长度: {{ message.length }} bytes / 最大容量: {{ capacityInfo.max_capacity }} bytes
+    <!-- Form -->
+    <div class="space-y-6">
+      <!-- Model select -->
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-on-surface-variant uppercase ml-1">选择模型</label>
+        <select v-model="selectedModel" class="input-field">
+          <option v-for="m in models" :key="m.id" :value="m.id">{{ m.name }}</option>
+        </select>
       </div>
-    </div>
 
-    <div class="form-group">
-      <label>密钥 (1-64 字符)</label>
-      <input
-        type="password"
-        v-model="key"
-        placeholder="输入密钥，用于加密和解密"
-        maxlength="64"
-      />
-    </div>
+      <!-- Secret message -->
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-on-surface-variant uppercase ml-1">秘密消息</label>
+        <textarea
+          v-model="message"
+          rows="4"
+          placeholder="输入要隐藏的秘密消息..."
+          class="input-field resize-none"
+          @blur="checkCapacity"
+        ></textarea>
+        <div v-if="capacityInfo" class="text-xs ml-1" :class="capacityInfo.valid ? 'text-on-surface-variant/60' : 'text-error font-bold'">
+          消息长度: {{ message.length }} bytes / 最大容量: {{ capacityInfo.max_capacity }} bytes
+        </div>
+      </div>
 
-    <div class="actions">
-      <button
-        @click="checkCapacity"
-        :disabled="isCheckingCapacity || !message || !key"
-        class="btn-secondary"
-      >
-        {{ isCheckingCapacity ? '检查中...' : '检查容量' }}
-      </button>
-      <button
-        @click="handleEmbed"
-        :disabled="isLoading || !message || !key"
-        class="btn-primary"
-      >
-        {{ isLoading ? '生成中...' : '生成含密图像' }}
-      </button>
-    </div>
+      <!-- Key -->
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-on-surface-variant uppercase ml-1">密钥 (1-64 字符)</label>
+        <div class="relative group">
+          <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50 group-focus-within:text-primary transition-colors">key</span>
+          <input
+            type="password"
+            v-model="key"
+            placeholder="输入密钥，用于加密和解密"
+            maxlength="64"
+            class="w-full bg-surface-container/50 border border-outline-variant/20 rounded-xl py-3 pl-12 pr-4 text-on-surface focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all outline-none"
+          />
+        </div>
+      </div>
 
-    <p v-if="error" class="error">{{ error }}</p>
+      <!-- Actions -->
+      <div class="flex gap-3">
+        <button
+          @click="checkCapacity"
+          :disabled="isCheckingCapacity || !message || !key"
+          class="btn-ghost flex-1"
+        >
+          {{ isCheckingCapacity ? '检查中...' : '检查容量' }}
+        </button>
+        <button
+          @click="handleEmbed"
+          :disabled="isLoading || !message || !key"
+          class="btn-primary flex-1"
+        >
+          {{ isLoading ? '生成中...' : '生成含密图像' }}
+        </button>
+      </div>
 
-    <div v-if="stegoImage" class="result">
-      <h3>生成结果：</h3>
-      <img :src="stegoImage" class="preview" />
-      <button @click="downloadImage" class="btn-download">下载图像</button>
+      <!-- Error -->
+      <p v-if="error" class="text-error text-sm">{{ error }}</p>
+
+      <!-- Result -->
+      <div v-if="stegoImage" class="space-y-4 p-6 bg-surface-container rounded-xl">
+        <h3 class="section-title">生成结果</h3>
+        <img :src="stegoImage" class="max-w-full max-h-[300px] rounded-lg border border-outline-variant/10" />
+        <button @click="downloadImage" class="btn-primary flex items-center gap-2">
+          <span class="material-symbols-outlined text-lg">download</span>
+          下载图像
+        </button>
+      </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.embed-view { max-width: 600px; }
-.tab-bar {
-  display: flex;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #e0e0e0;
-}
-.tab {
-  flex: 1;
-  text-align: center;
-  padding: 12px 0;
-  text-decoration: none;
-  color: #888;
-  font-size: 16px;
-  font-weight: bold;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  transition: color 0.2s, border-color 0.2s;
-}
-.tab:hover { color: #333; }
-.tab.active {
-  color: #42b883;
-  border-bottom-color: #42b883;
-}
-.form-group { margin-bottom: 16px; }
-.form-group label { display: block; margin-bottom: 4px; font-weight: bold; }
-.form-group input,
-.form-group textarea,
-.form-group select {
-  width: 100%;
-  padding: 10px;
-  box-sizing: border-box;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-}
-.capacity-info {
-  margin-top: 4px;
-  font-size: 12px;
-  color: #666;
-}
-.capacity-info.invalid {
-  color: #e74c3c;
-}
-.preview {
-  max-width: 100%;
-  max-height: 300px;
-  margin-top: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-.actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 16px;
-}
-.btn-primary {
-  padding: 12px 24px;
-  background: #42b883;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
-.btn-primary:disabled { background: #ccc; }
-.btn-secondary {
-  padding: 12px 24px;
-  background: #fff;
-  color: #333;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
-.btn-secondary:disabled { color: #ccc; }
-.btn-download {
-  margin-top: 10px;
-  padding: 8px 16px;
-  background: #3498db;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.error { color: #e74c3c; margin-top: 10px; }
-.result { margin-top: 20px; }
-</style>
