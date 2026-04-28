@@ -45,95 +45,50 @@ const pendingCount = computed(() => chatStore.pendingRequests.length)
 </script>
 
 <template>
-  <div class="chat-list">
-    <div class="header">
-      <h2>Messages</h2>
-      <router-link v-if="pendingCount > 0" to="/contacts/requests" class="badge">
-        {{ pendingCount }} new
+  <div class="h-full flex flex-col">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-5 border-b border-outline-variant/10">
+      <h2 class="text-xl font-bold text-on-surface">会话</h2>
+      <router-link
+        v-if="pendingCount > 0"
+        to="/contacts/requests"
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-error-container text-on-error-container text-xs font-bold"
+      >
+        <span class="material-symbols-outlined text-sm">notifications</span>
+        {{ pendingCount }} 条新请求
       </router-link>
     </div>
-    <div v-if="sortedContacts.length === 0" class="empty">
-      <p>No conversations yet</p>
-      <router-link to="/contacts/add">Add a contact</router-link>
+
+    <!-- Empty State -->
+    <div v-if="sortedContacts.length === 0" class="flex-1 flex flex-col items-center justify-center text-on-surface-variant gap-4 px-6">
+      <span class="material-symbols-outlined text-6xl opacity-30">forum</span>
+      <p class="text-sm">暂无会话</p>
+      <router-link to="/contacts/add" class="btn-primary text-sm px-4 py-2">
+        添加联系人
+      </router-link>
     </div>
-    <div
-      v-for="contact in sortedContacts"
-      :key="contact.user_id"
-      class="chat-item"
-      @click="openChat(contact.user_id)"
-    >
-      <div class="avatar">{{ (contact.nickname || contact.username)[0].toUpperCase() }}</div>
-      <div class="info">
-        <div class="name">{{ contact.nickname || contact.username }}</div>
-        <div class="last-msg">
-          {{ chatStore.getLastMessage(contact.user_id)?.content || 'No messages' }}
+
+    <!-- Chat List -->
+    <div v-else class="flex-1 overflow-y-auto">
+      <div
+        v-for="contact in sortedContacts"
+        :key="contact.user_id"
+        class="flex items-center gap-4 px-6 py-4 cursor-pointer hover:bg-surface-container-high transition-colors border-b border-outline-variant/5"
+        @click="openChat(contact.user_id)"
+      >
+        <div class="w-11 h-11 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-lg flex-shrink-0">
+          {{ (contact.nickname || contact.username)[0].toUpperCase() }}
         </div>
-      </div>
-      <div v-if="chatStore.getLastMessage(contact.user_id)" class="time">
-        {{ formatTime(chatStore.getLastMessage(contact.user_id)!.created_at) }}
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-on-surface text-sm">{{ contact.nickname || contact.username }}</div>
+          <div class="text-xs text-on-surface-variant truncate mt-0.5">
+            {{ chatStore.getLastMessage(contact.user_id)?.content || '暂无消息' }}
+          </div>
+        </div>
+        <div v-if="chatStore.getLastMessage(contact.user_id)" class="text-[11px] text-on-surface-variant/60 flex-shrink-0">
+          {{ formatTime(chatStore.getLastMessage(contact.user_id)!.created_at) }}
+        </div>
       </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.chat-list { padding: 0; }
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-}
-.badge {
-  background: #e53e3e;
-  color: white;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  text-decoration: none;
-}
-.empty {
-  text-align: center;
-  padding: 60px 20px;
-  color: #888;
-}
-.chat-item {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-}
-.chat-item:hover { background: #f8f8f8; }
-.avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: #4a90d9;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 18px;
-  flex-shrink: 0;
-}
-.info {
-  flex: 1;
-  margin-left: 12px;
-  overflow: hidden;
-}
-.name { font-weight: 500; }
-.last-msg {
-  font-size: 13px;
-  color: #888;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.time {
-  font-size: 12px;
-  color: #888;
-  flex-shrink: 0;
-}
-</style>

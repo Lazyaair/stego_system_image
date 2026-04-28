@@ -65,10 +65,13 @@ async function handleSend(content: string, isStegoMode: boolean) {
     try {
       const key = chatStore.getStegoKey(true)
       const res = await stegoApi.embed(content, key, 'celebahq')
+      if (!res.stego_image) {
+        throw new Error(res.error || '隐写嵌入失败: 未返回载体图像')
+      }
       // Strip data:image/png;base64, prefix if present
       let base64 = res.stego_image
       if (base64.startsWith('data:')) {
-        base64 = base64.split(',')[1]
+        base64 = base64.split(',')[1] ?? base64
       }
       await chatStore.sendStegoMessage(contactId.value, base64)
     } catch (e: any) {
@@ -83,13 +86,20 @@ async function handleSend(content: string, isStegoMode: boolean) {
 </script>
 
 <template>
-  <div class="chat-view">
-    <div class="header">
-      <button class="back-btn" @click="router.back()">←</button>
-      <span class="name">{{ contact?.username || contactId }}</span>
+  <div class="flex flex-col h-screen">
+    <!-- Header -->
+    <div class="flex items-center gap-3 px-6 py-4 bg-surface-container-low border-b border-outline-variant/10">
+      <button @click="router.push('/chats')" class="text-on-surface-variant hover:text-on-surface transition-colors">
+        <span class="material-symbols-outlined">arrow_back</span>
+      </button>
+      <div class="w-9 h-9 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm">
+        {{ (contact?.username || contactId)?.[0]?.toUpperCase() }}
+      </div>
+      <span class="font-semibold text-on-surface">{{ contact?.username || contactId }}</span>
     </div>
 
-    <div class="messages" ref="messagesContainer">
+    <!-- Messages -->
+    <div ref="messagesContainer" class="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-1 bg-surface">
       <MessageBubble
         v-for="msg in messages"
         :key="msg.id"
@@ -98,8 +108,13 @@ async function handleSend(content: string, isStegoMode: boolean) {
       />
     </div>
 
-    <div v-if="stegoLoading" class="loading">正在生成隐写图像...</div>
+    <!-- Loading indicator -->
+    <div v-if="stegoLoading" class="text-center py-2 text-tertiary text-xs font-medium bg-surface-container-low border-t border-outline-variant/10">
+      <span class="material-symbols-outlined text-sm animate-spin mr-1">progress_activity</span>
+      正在生成隐写图像...
+    </div>
 
+    <!-- Input -->
     <MessageInput
       @send="handleSend"
       :stego-max-capacity="stegoMaxCapacity"
@@ -107,45 +122,3 @@ async function handleSend(content: string, isStegoMode: boolean) {
     />
   </div>
 </template>
-
-<style scoped>
-.chat-view {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-}
-.header {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  background: #075e54;
-  color: #fff;
-  gap: 12px;
-}
-.back-btn {
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 20px;
-  cursor: pointer;
-}
-.name {
-  font-size: 16px;
-  font-weight: 500;
-}
-.messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px 0;
-  display: flex;
-  flex-direction: column;
-  background: #e5ddd5;
-}
-.loading {
-  text-align: center;
-  padding: 8px;
-  color: #666;
-  font-size: 13px;
-  background: #fff3cd;
-}
-</style>

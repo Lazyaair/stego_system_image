@@ -72,26 +72,33 @@ function saveImage() {
 </script>
 
 <template>
-  <div class="bubble" :class="message.direction" @click="closeMenu">
+  <div
+    class="max-w-[70%] px-4 py-2.5 rounded-2xl break-words"
+    :class="message.direction === 'sent'
+      ? 'self-end bg-primary-container text-on-primary-container ml-auto'
+      : 'self-start bg-surface-container-high text-on-surface'"
+    @click="closeMenu"
+  >
     <template v-if="message.revoked">
-      <div class="revoked">消息已撤回</div>
+      <div class="text-on-surface-variant/60 italic text-sm">消息已撤回</div>
     </template>
     <template v-else>
-      <div v-if="message.content_type === 'stego' && message.stego_image" class="stego-image">
+      <div v-if="message.content_type === 'stego' && message.stego_image" class="mb-1">
         <img
           :src="getStegoImageSrc(message.stego_image)"
           alt="隐写图像"
+          class="max-w-[240px] rounded-lg cursor-context-menu"
           @contextmenu="onContextMenu"
         />
-        <div v-if="extracting" class="extracted-text">提取中...</div>
-        <div v-else-if="extractedText !== null" class="extracted-text">
+        <div v-if="extracting" class="mt-2 px-3 py-2 rounded-lg bg-surface-container text-on-surface-variant text-xs">提取中...</div>
+        <div v-else-if="extractedText !== null" class="mt-2 px-3 py-2 rounded-lg bg-tertiary-container/30 text-tertiary text-xs font-medium">
           {{ extractedText }}
         </div>
       </div>
-      <div v-if="message.content" class="content">{{ message.content }}</div>
-      <div class="meta">
-        <span class="time">{{ formatTime(message.created_at) }}</span>
-        <span v-if="message.direction === 'sent'" class="status">
+      <div v-if="message.content" class="text-sm leading-relaxed">{{ message.content }}</div>
+      <div class="flex justify-end gap-1 mt-1">
+        <span class="text-[11px] opacity-50">{{ formatTime(message.created_at) }}</span>
+        <span v-if="message.direction === 'sent'" class="text-[11px] opacity-50">
           {{ statusIcon[message.status] || '' }}
         </span>
       </div>
@@ -99,89 +106,22 @@ function saveImage() {
 
     <!-- Context menu -->
     <Teleport to="body">
-      <div v-if="showMenu" class="context-menu" :style="{ left: menuX + 'px', top: menuY + 'px' }" @click.stop>
-        <div class="menu-item" @click="extractSecret">提取秘密消息</div>
-        <div class="menu-item" @click="saveImage">保存图像</div>
+      <div
+        v-if="showMenu"
+        class="fixed bg-surface-container-highest border border-outline-variant/20 rounded-xl shadow-2xl z-[1000] min-w-[160px] overflow-hidden"
+        :style="{ left: menuX + 'px', top: menuY + 'px' }"
+        @click.stop
+      >
+        <div class="px-4 py-3 cursor-pointer text-sm text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-2" @click="extractSecret">
+          <span class="material-symbols-outlined text-lg text-tertiary">key</span>
+          提取秘密消息
+        </div>
+        <div class="px-4 py-3 cursor-pointer text-sm text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-2" @click="saveImage">
+          <span class="material-symbols-outlined text-lg text-primary">download</span>
+          保存图像
+        </div>
       </div>
-      <div v-if="showMenu" class="menu-overlay" @click="closeMenu"></div>
+      <div v-if="showMenu" class="fixed inset-0 z-[999]" @click="closeMenu"></div>
     </Teleport>
   </div>
 </template>
-
-<style scoped>
-.bubble {
-  max-width: 70%;
-  padding: 8px 12px;
-  margin: 4px 12px;
-  border-radius: 12px;
-  word-break: break-word;
-}
-.bubble.sent {
-  align-self: flex-end;
-  background: #dcf8c6;
-  margin-left: auto;
-}
-.bubble.received {
-  align-self: flex-start;
-  background: #fff;
-  border: 1px solid #eee;
-}
-.revoked {
-  color: #999;
-  font-style: italic;
-  font-size: 13px;
-}
-.content {
-  font-size: 14px;
-  line-height: 1.4;
-}
-.meta {
-  display: flex;
-  justify-content: flex-end;
-  gap: 4px;
-  margin-top: 4px;
-}
-.time {
-  font-size: 11px;
-  color: #999;
-}
-.status {
-  font-size: 11px;
-}
-.stego-image img {
-  max-width: 240px;
-  border-radius: 8px;
-  cursor: context-menu;
-}
-.extracted-text {
-  margin-top: 4px;
-  padding: 6px 10px;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 6px;
-  font-size: 13px;
-  color: #333;
-}
-.context-menu {
-  position: fixed;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-  z-index: 1000;
-  min-width: 140px;
-  overflow: hidden;
-}
-.menu-item {
-  padding: 10px 16px;
-  cursor: pointer;
-  font-size: 14px;
-}
-.menu-item:hover {
-  background: #f5f5f5;
-}
-.menu-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 999;
-}
-</style>
