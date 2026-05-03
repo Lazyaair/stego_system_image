@@ -79,18 +79,22 @@ INPUT: msg (UTF-8 string), key (string), out_path
    - 确定性开关(§3.2.6):torch.use_deterministic_algorithms(True); cudnn.deterministic=True
 
 4. 正向扩散采样(前 249 步,正常采样)
+   - betas, timestep_map = make_respaced_betas(num_steps=250, total=1000)   # 见 §3.2.5
+       # betas.shape = (250,) FP64;timestep_map.shape = (250,) int,索引 0..249 → 原始 0..999
    - x_T = torch.randn((1, 3, 256, 256))     (被 diffusion_seed 控制)
-   - for t in respaced_timesteps[:-1]:        # 索引 0..248
-       model_out = model(x_t, t)             # (1, 6, 256, 256) FP32
-       eps, v    = model_out.chunk(2, dim=1) # each (1, 3, 256, 256)
-       μ_t, σ_t  = p_mean_variance(eps, v, x_t, t)     # 公式见 §3.2.5
-       noise     = torch.randn_like(x_t)               (seed 控制)
-       x_{t-1}   = μ_t + σ_t * noise                   # 标准 IDDPM 采样
+   - for t_respaced in range(250 - 1, 0, -1):       # 从最高噪声往低走,索引 249..1
+       original_t = timestep_map[t_respaced]         # int,0..999 范围内
+       model_out  = model(x_t, torch.tensor([original_t], device=device))   # (1, 6, 256, 256) FP32
+       eps, v     = model_out.chunk(2, dim=1)
+       μ_t, σ_t   = p_mean_variance(eps, v, x_t, t_respaced, betas)    # 公式见 §3.2.5
+       noise      = torch.randn_like(x_t)            (seed 控制)
+       x_{t_respaced - 1} = μ_t + σ_t * noise                            # 标准 IDDPM 采样
 
-5. 末步量化嵌入(t_last = respaced_timesteps[-1],即最后一步)
-   - model_out = model(x_1, t_last)          # (1, 6, 256, 256)
+5. 末步量化嵌入(t_respaced = 0,即最小噪声的那一步)
+   - original_t_last = timestep_map[0]
+   - model_out       = model(x_1, torch.tensor([original_t_last], device=device))
    - eps_last, v_last = model_out.chunk(2, dim=1)
-   - μ_last, σ_last   = p_mean_variance(eps_last, v_last, x_1, t_last)
+   - μ_last, σ_last   = p_mean_variance(eps_last, v_last, x_1, t_respaced=0, betas)
    - 栅格铺平(C→H→W,numpy/torch 默认 flatten 顺序):
        MU    = μ_last.flatten().to(float64).cpu().numpy()    # (196608,)
        SIGMA = σ_last.flatten().to(float64).cpu().numpy()
@@ -264,7 +268,7 @@ def gaussian_quantize_256(mu: float, sigma: float, lo=-1.0, hi=1.0) -> np.ndarra
 
 1. Model forward 输出是 FP32 tensor。
 2. μ_last, σ_last 在 `p_mean_variance`(§3.2.5)内部用 FP32 计算完毕。
-3. flatten 后**再** `.to(torch.float64).cpu().numpy()`,FP32→FP64 的 cast 顺序两端一致。
+3. flatten 后**严格按以下顺序**:`.flatten().to(torch.float64).cpu().numpy()`(先 flatten,再 dtype cast,再 device → cpu,再 .numpy())。两端必须逐字照搬这串调用,不得交换。
 4. `gaussian_quantize_256` 全程 FP64 计算。
 5. `encode_step` 将返回的 `np.ndarray[256]` 包装成 `torch.tensor(dtype=torch.float64)` 后使用。
 
@@ -327,28 +331,73 @@ CapacityError: embedded 4 of 6 blocks (192 of 320 payload bits) before exhaustin
 - `encode_step` / decode 主循环用 `torch.float64`,与原作者保持一致。
 - **边界 bin 的危险情形**:若 μ 恰好落在某 bin 边界、σ 又很小,发送/接收两端的 FP64 `(cumulative_probs > r_i_m).nonzero()[0]` 可能因任何浮点抖动选到相邻 bin。§3.2.6 的 cuDNN 确定性设置是防止这一点的主要机制;若实测仍偶发失败,fallback 方案是在 `gaussian_quantize_256` 里主动把极小概率(<1e-12)压到 0 并重新归一化,降低边界抖动概率。
 
-#### 3.2.5 `p_mean_variance` — learn_sigma DDPM 的逐像素 μ, σ
+#### 3.2.5 respaced schedule + `p_mean_variance` — learn_sigma DDPM 的逐像素 μ, σ
 
-采用 IDDPM 论文(Nichol & Dhariwal 2021)的公式,**参考实现路径**为 `guided_diffusion/gaussian_diffusion.py` 里的 `p_mean_variance`(P2-weighting fork 与原 OpenAI repo 此函数等价)。
+采用 IDDPM 论文(Nichol & Dhariwal 2021)的公式,**参考实现路径**为 `guided_diffusion/gaussian_diffusion.py` 里的 `p_mean_variance` 与 `respace.py` 里的 `space_timesteps`(P2-weighting fork 与原 OpenAI repo 此二者等价)。
+
+**`make_respaced_betas` — respace 逻辑(抠自 guided_diffusion/respace.py)**
+
+原始 DDPM 以 1000 步训练,推理时抽 250 步加速。关键:respace 后的 β 序列**不是**原 β 的简单子采样,而是从 `alphas_cumprod` 反推得到。此外必须产出 `timestep_map` 把 respaced 索引 0..249 映射回原始 0..999,否则 UNet 的 timestep embedding 会接收到训练时从未见过的值,整条管线会悄悄产生**双方一致但错误**的结果。
 
 ```python
-def p_mean_variance(eps_pred, v_pred, x_t, t, betas):
+def make_respaced_betas(num_steps=250, total=1000):
+    """
+    返回:
+      betas_respaced: np.float64 array, shape (num_steps,)
+      timestep_map:   int list, length num_steps, 元素 ∈ [0, total),升序
+                      timestep_map[i] = 原始扩散调度中第 i 个 respaced 步对应的原始 timestep
+    """
+    # 1. 原始 β 序列(linear schedule,与 FFHQ P2 训练一致)
+    beta_start = 0.0001 * 1000 / total
+    beta_end   = 0.02   * 1000 / total
+    betas_orig = np.linspace(beta_start, beta_end, total, dtype=np.float64)
+    alphas_orig           = 1.0 - betas_orig
+    alphas_cumprod_orig   = np.cumprod(alphas_orig)                        # shape (1000,)
+
+    # 2. 选哪 250 个原始步被保留 — guided_diffusion 用均匀间隔
+    #    space_timesteps(total, [num_steps]) 的等价结果
+    step_size    = total / num_steps
+    timestep_map = [int(i * step_size) for i in range(num_steps)]          # 例: [0, 4, 8, ..., 996]
+
+    # 3. 从保留步的 ᾱ 反推 respaced β(guided_diffusion/respace.py:space_timesteps 末段)
+    last_alpha_cumprod = 1.0
+    betas_respaced     = []
+    for orig_t in timestep_map:
+        cur = alphas_cumprod_orig[orig_t]
+        betas_respaced.append(1.0 - cur / last_alpha_cumprod)
+        last_alpha_cumprod = cur
+    betas_respaced = np.array(betas_respaced, dtype=np.float64)
+    return betas_respaced, timestep_map
+```
+
+**模型调用的 timestep 约定**:UNet 的 `forward(x, timesteps)` 接受**原始 1000 范围**内的 timestep。§3.1 步骤 4/5 传入的是 `timestep_map[t_respaced]`,不是 `t_respaced` 本身。这点是整个复现性的隐藏暗礁 — 必须落纸。
+
+**`p_mean_variance` — 逐像素 μ, σ 计算**
+
+```python
+def p_mean_variance(eps_pred, v_pred, x_t, t_respaced, betas):
     """
     eps_pred, v_pred: each FP32 Tensor of shape (1, 3, 256, 256)
     x_t:              FP32 Tensor (1, 3, 256, 256)
-    t:                int (timestep index into the respaced schedule)
-    betas:            respaced β schedule, shape (num_respaced,), FP64 precomputed
+    t_respaced:       int (respaced 索引, 0..249),不是原始 timestep
+    betas:            respaced β schedule, shape (num_respaced,), FP64 precomputed (§3.2.5 上方)
     返回:  mu (1,3,256,256) FP32, sigma (1,3,256,256) FP32
     """
+    # 所有辅助量用 betas 同 device 同 dtype 构造,避免 cat 报错
+    device, dtype       = betas.device, betas.dtype
     alphas              = 1.0 - betas
-    alphas_cumprod      = torch.cumprod(alphas, dim=0)                 # ᾱ_t
-    alphas_cumprod_prev = torch.cat([torch.tensor([1.0]),
-                                     alphas_cumprod[:-1]])             # ᾱ_{t-1}
+    alphas_cumprod      = torch.cumprod(alphas, dim=0)                 # ᾱ_t, respaced
+    alphas_cumprod_prev = torch.cat([
+        torch.tensor([1.0], device=device, dtype=dtype),               # 显式 device/dtype
+        alphas_cumprod[:-1],
+    ])                                                                  # ᾱ_{t-1}
     # 后验方差 β̃_t = β_t * (1 - ᾱ_{t-1}) / (1 - ᾱ_t)
     posterior_variance  = betas * (1 - alphas_cumprod_prev) / (1 - alphas_cumprod)
     posterior_log_var_clipped = torch.log(
         torch.cat([posterior_variance[1:2], posterior_variance[1:]])
     )  # t=0 时 β̃=0,用 t=1 的值 clamp
+
+    t = t_respaced  # 内部简写,所有索引都是 respaced 索引
 
     # -------- 1. 预测 x_0 --------
     sqrt_recip_alphas_cumprod     = (1.0 / alphas_cumprod[t]).sqrt()
@@ -376,9 +425,9 @@ def p_mean_variance(eps_pred, v_pred, x_t, t, betas):
 
 **实现要点**:
 
-- betas 采用 guided_diffusion 的 `get_named_beta_schedule("linear", 1000)`,然后按 `space_timesteps(1000, "250")` respace。respace 逻辑必须从 guided_diffusion 的 `respace.py` 抠过来(它同时产出新 β 序列,不能简单取子集)。
-- `clip_denoised=True` 是 guided_diffusion 的推理默认,必须在 §3.2.5 的 pred_x0 step 保留 `clamp(-1, 1)`。
-- `v_pred` 的取值范围约定:某些 P2-weighting 版本输出 `v ∈ [-1, 1]`,某些版本输出 `[0, 1]`。**实现第一步必须**加载 `ffhq_p2.pt` 后对 `v_pred` 做一次 min/max 统计(放在 `test_roundtrip.py` 的 setup 断言里),若发现范围是 `[0, 1]` 则去掉 `frac = (v_pred + 1) / 2`,直接令 `frac = v_pred`。规格以实测为准。
+- `clip_denoised=True` 是 guided_diffusion 的推理默认,必须在 pred_x0 step 保留 `clamp(-1, 1)`。
+- `v_pred` 的取值范围约定:某些 P2-weighting 版本输出 `v ∈ [-1, 1]`,某些版本输出 `[0, 1]`。**load_model() 内部**(不仅是 test_roundtrip.py)在第一次完整 forward pass 后对 `v_pred` 做一次 min/max 统计并缓存。若发现范围是 `[0, 1]` 则 p_mean_variance 内 `frac = v_pred`;若 `[-1, 1]` 则 `frac = (v_pred + 1) / 2`。在 load_model 里检查确保 embed.py / extract.py 在生产运行时都 abort fast,不仅 dev 测试时检查。
+- `timestep_map` 的存在意味着**相邻 respaced 步之间对应的原始 timestep 间隔约为 4**(1000 / 250);UNet 的 timestep embedding 在 0..999 上训练过,用 respaced 索引 0..249 直接送进去会产生训练时未见过的 embedding,两端仍一致但语义错误,生成图是噪声。
 
 #### 3.2.6 CUDA 确定性与可复现
 
@@ -412,11 +461,11 @@ test/sparsample/
 │   └── LICENSE                    # 原仓库的 license
 ├── core.py                        # 业务逻辑(单文件)
 │   ├── FFHQ_P2_CONFIG             # 硬编码 UNet/diffusion 超参
-│   ├── load_model(pt_path, device)
+│   ├── load_model(pt_path, device) -> (model, v_range_flag)  # 含 v_pred 范围自动探测
 │   ├── derive_seeds(key)
-│   ├── make_respaced_betas(num_steps=250, total=1000)
-│   ├── sample_to_x1(model, seed, betas, timesteps)           # 前 N-1 步
-│   ├── compute_last_step_distribution(model, x1, t_last, betas)
+│   ├── make_respaced_betas(num_steps=250, total=1000) -> (betas, timestep_map)
+│   ├── sample_to_x1(model, seed, betas, timestep_map)         # 前 N-1 步,内部用 timestep_map
+│   ├── compute_last_step_distribution(model, x1, timestep_map, betas)
 │   ├── gaussian_quantize_256(mu, sigma)
 │   ├── encode_step                                            # 移植自 sparsamp.py:8-23 (一字不改)
 │   │                                                           # decode 逻辑内联在 sparsample_extract 主循环
@@ -542,6 +591,7 @@ Phase 1 demo 验证通过后,Phase 2 会开一份独立 spec。大致方向:在 
 |---------------------------------------------------------------------|---------------------------------------------------------------------|
 | FFHQ P2 UNet 架构在 P2 repo 和 guided-diffusion 原版有细微差异            | 以 `ffhq_p2.pt` 能成功 `load_state_dict` 为准,差异排查到对齐             |
 | `p_mean_variance` 实现在不同 fork 间有差异(clip / v_pred 范围 / log_var clamp) | §3.2.5 已 pin 到 guided_diffusion 原版公式 + 明确 `v_pred` 范围需实测断言   |
+| UNet timestep embedding 接收错误的时间步索引(respaced 0..249 vs 原始 0..999)    | §3.2.5 明确 `make_respaced_betas` 返回 `timestep_map`,§3.1 调用 `model(x, timestep_map[t])` |
 | CPU 单次 embed 3-5 分钟,用户等待体验差                                    | Demo 阶段接受;README 提示使用 GPU                                      |
 | σ 接近 0 导致分布退化(sparsample 选择退化成确定性)                         | `learn_sigma=True` 保障非零 σ;quantize 函数 max(0)+归一化兜底             |
 | cuDNN 非确定性导致两端 x_1 不一致,边界 bin 翻转                             | §3.2.6 强制 `use_deterministic_algorithms(True)` + cudnn.deterministic |
