@@ -5,10 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.stegoapp.app.ui.screens.EmbedScreen
-import com.stegoapp.app.ui.screens.ExtractScreen
-import com.stegoapp.app.ui.screens.auth.LoginScreen
-import com.stegoapp.app.ui.screens.auth.RegisterScreen
+import com.stegoapp.app.ui.screens.auth.AuthScreen
+import com.stegoapp.app.ui.screens.stego.StegoToolScreen
 import com.stegoapp.app.ui.screens.chat.ChatListScreen
 import com.stegoapp.app.ui.screens.chat.ChatScreen
 import com.stegoapp.app.ui.screens.contact.AddContactScreen
@@ -21,8 +19,7 @@ import com.stegoapp.app.ui.viewmodel.ChatViewModel
 import com.stegoapp.app.ui.viewmodel.ContactViewModel
 
 sealed class Screen(val route: String) {
-    object Login : Screen("login")
-    object Register : Screen("register")
+    object Auth : Screen("auth")
     object ChatList : Screen("chats")
     object Chat : Screen("chat/{contactId}/{contactName}") {
         fun createRoute(contactId: String, contactName: String) =
@@ -31,8 +28,7 @@ sealed class Screen(val route: String) {
     object Contacts : Screen("contacts")
     object AddContact : Screen("contacts/add")
     object Profile : Screen("profile")
-    object Embed : Screen("embed")
-    object Extract : Screen("extract")
+    object StegoTool : Screen("stego")
     object Requests : Screen("requests")
     object ContactDetail : Screen("contact/{userId}") {
         fun createRoute(userId: String) = "contact/$userId"
@@ -50,26 +46,14 @@ fun NavGraph(
     currentUsername: String
 ) {
     NavHost(navController = navController, startDestination = startDestination) {
-        composable(Screen.Login.route) {
-            LoginScreen(
+        composable(Screen.Auth.route) {
+            AuthScreen(
                 authViewModel = authViewModel,
-                onLoginSuccess = {
+                onAuthSuccess = {
                     navController.navigate(Screen.ChatList.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
+                        popUpTo(Screen.Auth.route) { inclusive = true }
                     }
                 },
-                onNavigateToRegister = { navController.navigate(Screen.Register.route) }
-            )
-        }
-        composable(Screen.Register.route) {
-            RegisterScreen(
-                authViewModel = authViewModel,
-                onRegisterSuccess = {
-                    navController.navigate(Screen.ChatList.route) {
-                        popUpTo(Screen.Register.route) { inclusive = true }
-                    }
-                },
-                onNavigateToLogin = { navController.popBackStack() }
             )
         }
         composable(Screen.ChatList.route) {
@@ -129,27 +113,14 @@ fun NavGraph(
                 authViewModel = authViewModel,
                 onLogout = {
                     chatViewModel.disconnectWebSocket()
-                    navController.navigate(Screen.Login.route) {
+                    navController.navigate(Screen.Auth.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
             )
         }
-        composable(Screen.Embed.route) {
-            EmbedScreen(onNavigateToExtract = {
-                navController.navigate(Screen.Extract.route) {
-                    popUpTo(Screen.Embed.route) { inclusive = true }
-                    launchSingleTop = true
-                }
-            })
-        }
-        composable(Screen.Extract.route) {
-            ExtractScreen(onNavigateToEmbed = {
-                navController.navigate(Screen.Embed.route) {
-                    popUpTo(Screen.Extract.route) { inclusive = true }
-                    launchSingleTop = true
-                }
-            })
+        composable(Screen.StegoTool.route) {
+            StegoToolScreen()
         }
         composable(Screen.Requests.route) {
             RequestsScreen(

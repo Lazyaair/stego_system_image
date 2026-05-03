@@ -85,7 +85,7 @@ fun MainApp(
     LaunchedEffect(Unit) {
         chatViewModel.kicked.collect {
             authViewModel.onKicked {
-                navController.navigate(Screen.Login.route) {
+                navController.navigate(Screen.Auth.route) {
                     popUpTo(0) { inclusive = true }
                 }
             }
@@ -93,19 +93,19 @@ fun MainApp(
         }
     }
 
-    val startDestination = if (isAuthenticated) Screen.ChatList.route else Screen.Login.route
+    val startDestination = if (isAuthenticated) Screen.ChatList.route else Screen.Auth.route
 
     val navItems = listOf(
         NavItem(Screen.ChatList.route, "消息", Icons.AutoMirrored.Filled.Chat),
         NavItem(Screen.Contacts.route, "联系人", Icons.Filled.Contacts),
-        NavItem(Screen.Embed.route, "隐写工具", Icons.Filled.EnhancedEncryption),
+        NavItem(Screen.StegoTool.route, "隐写工具", Icons.Filled.EnhancedEncryption),
         NavItem(Screen.Profile.route, "我的", Icons.Filled.Person),
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val showBottomBar = isAuthenticated && (currentRoute in navItems.map { it.route } || currentRoute == Screen.Extract.route)
+    val showBottomBar = isAuthenticated && currentRoute in navItems.map { it.route }
 
     Scaffold(
         bottomBar = {
@@ -115,7 +115,7 @@ fun MainApp(
                         NavigationBarItem(
                             icon = { Icon(item.icon, contentDescription = item.label) },
                             label = { Text(item.label) },
-                            selected = currentRoute == item.route || (item.route == Screen.Embed.route && currentRoute == Screen.Extract.route),
+                            selected = currentRoute == item.route,
                             onClick = {
                                 navController.navigate(item.route) {
                                     popUpTo(Screen.ChatList.route) { saveState = true }
