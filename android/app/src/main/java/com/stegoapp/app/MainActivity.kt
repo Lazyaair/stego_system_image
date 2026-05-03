@@ -8,7 +8,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Contacts
+import androidx.compose.material.icons.filled.EnhancedEncryption
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -86,17 +89,17 @@ fun MainApp(
                     popUpTo(0) { inclusive = true }
                 }
             }
-            Toast.makeText(context, "Logged in on another device", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "账号已在其他设备登录", Toast.LENGTH_LONG).show()
         }
     }
 
     val startDestination = if (isAuthenticated) Screen.ChatList.route else Screen.Login.route
 
     val navItems = listOf(
-        NavItem(Screen.ChatList.route, "Messages", Icons.Default.Email),
-        NavItem(Screen.Contacts.route, "Contacts", Icons.Default.Person),
-        NavItem(Screen.Embed.route, "Stego", Icons.Default.Lock),
-        NavItem(Screen.Profile.route, "Profile", Icons.Default.AccountCircle),
+        NavItem(Screen.ChatList.route, "消息", Icons.AutoMirrored.Filled.Chat),
+        NavItem(Screen.Contacts.route, "联系人", Icons.Filled.Contacts),
+        NavItem(Screen.Embed.route, "隐写工具", Icons.Filled.EnhancedEncryption),
+        NavItem(Screen.Profile.route, "我的", Icons.Filled.Person),
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()

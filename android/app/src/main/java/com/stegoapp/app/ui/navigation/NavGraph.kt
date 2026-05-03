@@ -12,7 +12,9 @@ import com.stegoapp.app.ui.screens.auth.RegisterScreen
 import com.stegoapp.app.ui.screens.chat.ChatListScreen
 import com.stegoapp.app.ui.screens.chat.ChatScreen
 import com.stegoapp.app.ui.screens.contact.AddContactScreen
+import com.stegoapp.app.ui.screens.contact.ContactDetailScreen
 import com.stegoapp.app.ui.screens.contact.ContactsScreen
+import com.stegoapp.app.ui.screens.contact.RequestsScreen
 import com.stegoapp.app.ui.screens.profile.ProfileScreen
 import com.stegoapp.app.ui.viewmodel.AuthViewModel
 import com.stegoapp.app.ui.viewmodel.ChatViewModel
@@ -31,6 +33,10 @@ sealed class Screen(val route: String) {
     object Profile : Screen("profile")
     object Embed : Screen("embed")
     object Extract : Screen("extract")
+    object Requests : Screen("requests")
+    object ContactDetail : Screen("contact/{userId}") {
+        fun createRoute(userId: String) = "contact/$userId"
+    }
 }
 
 @Composable
@@ -144,6 +150,30 @@ fun NavGraph(
                     launchSingleTop = true
                 }
             })
+        }
+        composable(Screen.Requests.route) {
+            RequestsScreen(
+                chatViewModel = chatViewModel,
+                contactViewModel = contactViewModel,
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(Screen.ContactDetail.route) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId") ?: return@composable
+            ContactDetailScreen(
+                userId = userId,
+                contactViewModel = contactViewModel,
+                onBack = { navController.popBackStack() },
+                onOpenChat = { openUserId ->
+                    val name = contactViewModel.contacts.value
+                        .find { it.userId == openUserId }?.let {
+                            it.nickname.ifEmpty { it.username }
+                        } ?: "Chat"
+                    navController.navigate(Screen.Chat.createRoute(openUserId, name)) {
+                        popUpTo(Screen.ContactDetail.route) { inclusive = true }
+                    }
+                },
+            )
         }
     }
 }
