@@ -66,6 +66,17 @@ fun MainApp(
 
     val context = LocalContext.current
 
+    // Verify the stored token against the server on startup. If the token is
+    // expired/revoked the server returns 401; clear it and redirect to Auth.
+    LaunchedEffect(Unit) {
+        authViewModel.verifySession {
+            Toast.makeText(context, "登录已过期,请重新登录", Toast.LENGTH_LONG).show()
+            navController.navigate(Screen.Auth.route) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
+
     // Connect WebSocket when authenticated
     LaunchedEffect(isAuthenticated) {
         if (isAuthenticated) {

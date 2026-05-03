@@ -80,5 +80,28 @@ class AuthViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Validate the stored token against the server. If it's rejected (expired,
+     * revoked, or signed with a different key), clear local credentials and
+     * invoke onInvalid so the UI can redirect to the auth screen.
+     * Network errors are ignored so the user can still open the app offline.
+     */
+    fun verifySession(onInvalid: () -> Unit) {
+        viewModelScope.launch {
+            val hasToken = tokenStore.token.firstOrNull() != null
+            if (!hasToken) return@launch
+            try {
+                ApiClient.authApi.me()
+            } catch (e: retrofit2.HttpException) {
+                if (e.code() == 401 || e.code() == 403) {
+                    tokenStore.clear()
+                    onInvalid()
+                }
+            } catch (_: Exception) {
+                // Network failure — keep current state so offline use works.
+            }
+        }
+    }
+
     fun clearError() { _error.value = null }
 }

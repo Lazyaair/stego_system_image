@@ -77,7 +77,14 @@ class WsClient {
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                scheduleReconnect()
+                val httpCode = response?.code
+                if (httpCode == 401 || httpCode == 403) {
+                    // Token rejected during handshake — bail out, let the UI redirect.
+                    shouldReconnect = false
+                    _kicked.tryEmit(Unit)
+                } else {
+                    scheduleReconnect()
+                }
             }
         })
     }
