@@ -113,6 +113,13 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 handleWsMessage(msg)
             }
         }
+        // Fallback path: server force-closes socket with code 4001 when another
+        // device logs in. We still emit kicked so the UI can redirect.
+        viewModelScope.launch {
+            wsClient.kicked.collect {
+                _kicked.emit(Unit)
+            }
+        }
     }
 
     fun disconnectWebSocket() {
@@ -149,7 +156,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                     else it
                 }
             } else {
-                _pendingRequests.value = _pendingRequests.value + PendingRequest(
+                _pendingRequests.value += PendingRequest(
                     userId = fromUserId,
                     username = fromUsername,
                     messages = listOf(msg)
@@ -296,7 +303,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                     stegoImageBase64
                 }
                 val bytes = android.util.Base64.decode(base64Clean, android.util.Base64.DEFAULT)
-                val tempFile = File.createTempFile("stego_extract", ".png", getApplication<android.app.Application>().cacheDir)
+                val tempFile = File.createTempFile("stego_extract", ".png", getApplication<Application>().cacheDir)
                 tempFile.writeBytes(bytes)
 
                 val requestFile = tempFile.asRequestBody("image/png".toMediaTypeOrNull())

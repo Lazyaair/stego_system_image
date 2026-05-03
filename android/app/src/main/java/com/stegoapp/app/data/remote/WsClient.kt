@@ -24,9 +24,6 @@ class WsClient {
     private val _messages = MutableSharedFlow<WsMessage>(extraBufferCapacity = 64)
     val messages = _messages.asSharedFlow()
 
-    private val _connected = MutableSharedFlow<Boolean>(extraBufferCapacity = 8)
-    val connected = _connected.asSharedFlow()
-
     private val _kicked = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
     val kicked = _kicked.asSharedFlow()
 
@@ -52,7 +49,6 @@ class WsClient {
         ws = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 reconnectAttempts = 0
-                _connected.tryEmit(true)
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -65,7 +61,6 @@ class WsClient {
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                 // Server initiated close — complete the handshake
                 webSocket.close(code, reason)
-                _connected.tryEmit(false)
                 if (code == 4001) {
                     shouldReconnect = false
                     _kicked.tryEmit(Unit)
@@ -73,7 +68,6 @@ class WsClient {
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                _connected.tryEmit(false)
                 if (code == 4001) {
                     shouldReconnect = false
                     _kicked.tryEmit(Unit)
@@ -83,7 +77,6 @@ class WsClient {
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                _connected.tryEmit(false)
                 scheduleReconnect()
             }
         })

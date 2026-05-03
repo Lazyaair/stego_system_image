@@ -373,7 +373,7 @@ fun MessageBubble(message: MessageEntity, chatViewModel: ChatViewModel) {
     var showMenu by remember { mutableStateOf(false) }
     var extractedText by remember { mutableStateOf<String?>(null) }
     var extracting by remember { mutableStateOf(false) }
-    val isStego = message.contentType == "stego" && message.stegoImage != null
+    val stegoImageData = message.stegoImage.takeIf { message.contentType == "stego" }
 
     val stegoBitmap = remember(message.stegoImage) {
         message.stegoImage?.let { raw ->
@@ -417,7 +417,7 @@ fun MessageBubble(message: MessageEntity, chatViewModel: ChatViewModel) {
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 } else {
-                    if (isStego && stegoBitmap != null) {
+                    if (stegoImageData != null && stegoBitmap != null) {
                         Box {
                             Image(
                                 bitmap = stegoBitmap.asImageBitmap(),
@@ -440,11 +440,11 @@ fun MessageBubble(message: MessageEntity, chatViewModel: ChatViewModel) {
                                     text = { Text("提取秘密消息") },
                                     onClick = {
                                         showMenu = false
-                                        if (!extracting && message.stegoImage != null) {
+                                        if (!extracting) {
                                             extracting = true
                                             scope.launch {
                                                 val isOut = message.direction == "sent"
-                                                extractedText = chatViewModel.extractMessage(message.stegoImage, isOut)
+                                                extractedText = chatViewModel.extractMessage(stegoImageData, isOut)
                                                 extracting = false
                                             }
                                         }
@@ -454,9 +454,7 @@ fun MessageBubble(message: MessageEntity, chatViewModel: ChatViewModel) {
                                     text = { Text("保存图像") },
                                     onClick = {
                                         showMenu = false
-                                        message.stegoImage?.let { img ->
-                                            scope.launch { saveImageToGallery(context, img, message.id) }
-                                        }
+                                        scope.launch { saveImageToGallery(context, stegoImageData, message.id) }
                                     },
                                 )
                             }
@@ -485,7 +483,7 @@ fun MessageBubble(message: MessageEntity, chatViewModel: ChatViewModel) {
                     }
 
                     if (message.content.isNotBlank()) {
-                        if (isStego) Spacer(modifier = Modifier.height(6.dp))
+                        if (stegoImageData != null) Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = message.content,
                             color = textColor,

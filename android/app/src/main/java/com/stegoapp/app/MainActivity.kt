@@ -20,7 +20,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.stegoapp.app.api.ApiClient
-import com.stegoapp.app.data.local.TokenStore
 import com.stegoapp.app.ui.navigation.NavGraph
 import com.stegoapp.app.ui.navigation.Screen
 import com.stegoapp.app.ui.theme.StegoAppTheme
