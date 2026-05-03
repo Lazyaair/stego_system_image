@@ -84,14 +84,12 @@ fun NavGraph(
         composable(Screen.Contacts.route) {
             ContactsScreen(
                 contactViewModel = contactViewModel,
-                onOpenChat = { userId ->
-                    val name = contactViewModel.contacts.value
-                        .find { it.userId == userId }?.let {
-                            it.nickname.ifEmpty { it.username }
-                        } ?: "Chat"
-                    navController.navigate(Screen.Chat.createRoute(userId, name))
+                chatViewModel = chatViewModel,
+                onAddContact = { navController.navigate(Screen.AddContact.route) },
+                onOpenRequests = { navController.navigate(Screen.Requests.route) },
+                onOpenDetail = { userId ->
+                    navController.navigate(Screen.ContactDetail.createRoute(userId))
                 },
-                onAddContact = { navController.navigate(Screen.AddContact.route) }
             )
         }
         composable(Screen.AddContact.route) {

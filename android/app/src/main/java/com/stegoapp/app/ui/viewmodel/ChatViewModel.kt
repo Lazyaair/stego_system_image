@@ -367,4 +367,17 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     fun rejectPendingRequest(request: PendingRequest) {
         _pendingRequests.value = _pendingRequests.value.filter { it.userId != request.userId }
     }
+
+    fun blockPendingRequest(request: PendingRequest) {
+        viewModelScope.launch {
+            blacklistDao.insert(
+                com.stegoapp.app.data.local.entity.BlacklistEntity(
+                    userId = request.userId,
+                    username = request.username,
+                    blockedAt = System.currentTimeMillis().toString(),
+                ),
+            )
+            _pendingRequests.value = _pendingRequests.value.filter { it.userId != request.userId }
+        }
+    }
 }
