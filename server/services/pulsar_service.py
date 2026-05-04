@@ -1,17 +1,24 @@
-import sys
 import os
+import sys
+import threading
+from pathlib import Path
+from typing import Any, Dict, Optional
 
-# 添加 pulsar 项目路径
-PULSAR_PATH = os.path.expanduser("~/bishe/pulsar")
+# 以本文件为基准解析项目根,便于迁移部署(server/services/pulsar_service.py → bishe/)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+# Pulsar 源码目录(作为外部 submodule 签出到项目根下的 pulsar/)
+# 可通过环境变量 PULSAR_PATH 覆盖(例如把 Pulsar 放到 venv 或其他位置时)。
+PULSAR_PATH = os.environ.get("PULSAR_PATH", str(PROJECT_ROOT / "pulsar"))
 if PULSAR_PATH not in sys.path:
     sys.path.insert(0, PULSAR_PATH)
 
 import pulsar as pulsar_module
-from typing import Optional, Dict, Any
-import threading
 
 # Pulsar 模型的本地缓存目录。优先使用,不存在则 fallback 到 HuggingFace Hub。
-PULSAR_MODELS_DIR = os.path.expanduser("~/bishe/models/pulsar")
+PULSAR_MODELS_DIR = os.environ.get(
+    "PULSAR_MODELS_DIR", str(PROJECT_ROOT / "models" / "pulsar")
+)
 
 # 模型配置
 MODELS = {
