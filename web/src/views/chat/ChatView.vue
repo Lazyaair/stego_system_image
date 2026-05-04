@@ -64,7 +64,7 @@ async function handleSend(content: string, isStegoMode: boolean) {
     stegoLoading.value = true
     try {
       const key = chatStore.getStegoKey(true)
-      const res = await stegoApi.embed(content, key, 'celebahq')
+      const res = await stegoApi.embed(content, key)
       if (!res.stego_image) {
         throw new Error(res.error || '隐写嵌入失败: 未返回载体图像')
       }

@@ -1,8 +1,27 @@
 import os
 import secrets
+from pathlib import Path
+
+
+def _load_or_create_jwt_secret() -> str:
+    env = os.getenv("JWT_SECRET")
+    if env:
+        return env
+    # 持久化自动生成的 secret,避免每次 server 重启作废所有已签发 token
+    secret_file = Path(__file__).parent / ".jwt_secret"
+    if secret_file.exists():
+        return secret_file.read_text().strip()
+    secret = secrets.token_hex(32)
+    secret_file.write_text(secret)
+    try:
+        os.chmod(secret_file, 0o600)
+    except OSError:
+        pass
+    return secret
+
 
 # JWT
-JWT_SECRET = os.getenv("JWT_SECRET", secrets.token_hex(32))
+JWT_SECRET = _load_or_create_jwt_secret()
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_DAYS = int(os.getenv("JWT_EXPIRE_DAYS", "7"))
 

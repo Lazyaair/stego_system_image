@@ -13,9 +13,15 @@ router = APIRouter()
 
 @router.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket, token: str = None):
-    # Authenticate
+    # Authenticate. 必须先 accept() 再 close() 才能把 code=4003 传到浏览器;
+    # 否则 FastAPI 会返回 HTTP 403,浏览器 onclose 只看到 1006 无法区分原因。
     user = await get_current_user_ws(token)
     if not user:
+        await ws.accept()
+        try:
+            await ws.send_text(json.dumps({"type": "auth_failed"}))
+        except Exception:
+            pass
         await ws.close(code=4003, reason="Authentication failed")
         return
 

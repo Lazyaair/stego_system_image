@@ -26,7 +26,7 @@ import torch
 from scipy.stats import norm
 from PIL import Image
 
-from guided_diffusion.unet import UNetModel
+from .guided_diffusion.unet import UNetModel
 
 
 # ---------------------------------------------------------------------------
@@ -66,9 +66,10 @@ DEFAULT_NUM_STEPS = 10   # demo default; bump via --steps for quality
 DEFAULT_TOTAL_STEPS = 1000
 DEFAULT_BLOCK_SIZE = 32
 
-# Project root = two levels up from this file (test/sparsample/core.py → bishe/)
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+# Project root = three levels up from this file (server/services/sparsample/core.py → bishe/)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 DEFAULT_MODEL_PATH = str(PROJECT_ROOT / "models" / "sparsample" / "ffhq_p2.pt")
+SPARSAMPLE_MODELS_DIR = PROJECT_ROOT / "models" / "sparsample"
 
 
 # ---------------------------------------------------------------------------

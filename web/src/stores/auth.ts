@@ -43,5 +43,19 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('user')
   }
 
-  return { token, user, isAuthenticated, register, login, logout, onKicked }
+  /** 启动时/WS 鉴权失败时验证本地 token 是否仍被 server 接受。失败则清除并触发跳登录。 */
+  async function verify(): Promise<boolean> {
+    if (!token.value) return false
+    try {
+      const me = await authApi.getMe()
+      user.value = { user_id: me.user_id, username: me.username }
+      localStorage.setItem('user', JSON.stringify(user.value))
+      return true
+    } catch {
+      onKicked()
+      return false
+    }
+  }
+
+  return { token, user, isAuthenticated, register, login, logout, onKicked, verify }
 })

@@ -10,35 +10,50 @@ import pulsar as pulsar_module
 from typing import Optional, Dict, Any
 import threading
 
+# Pulsar 模型的本地缓存目录。优先使用,不存在则 fallback 到 HuggingFace Hub。
+PULSAR_MODELS_DIR = os.path.expanduser("~/bishe/models/pulsar")
+
 # 模型配置
 MODELS = {
     "celebahq": {
         "id": "celebahq",
         "name": "CelebA-HQ (人脸)",
-        "repo": "google/ddpm-celebahq-256",
+        "hub_repo": "google/ddpm-celebahq-256",
+        "local_dir": "celebahq",
         "default": True
     },
     "church": {
         "id": "church",
         "name": "Church (教堂)",
-        "repo": "google/ddpm-church-256",
+        "hub_repo": "google/ddpm-church-256",
+        "local_dir": "church",
         "default": False
     },
     "bedroom": {
         "id": "bedroom",
         "name": "Bedroom (卧室)",
-        "repo": "google/ddpm-bedroom-256",
+        "hub_repo": "google/ddpm-bedroom-256",
+        "local_dir": "bedroom",
         "default": False
     },
     "cat": {
         "id": "cat",
         "name": "Cat (猫)",
-        "repo": "google/ddpm-cat-256",
+        "hub_repo": "google/ddpm-cat-256",
+        "local_dir": "cat",
         "default": False
     }
 }
 
 DEFAULT_MODEL = "celebahq"
+
+
+def _resolve_repo(model_cfg: Dict[str, Any]) -> str:
+    """优先返回本地 diffusers 目录,不存在则返回 HF Hub repo 名。"""
+    local = os.path.join(PULSAR_MODELS_DIR, model_cfg["local_dir"])
+    if os.path.isdir(local) and os.path.isfile(os.path.join(local, "config.json")):
+        return local
+    return model_cfg["hub_repo"]
 
 
 class PulsarService:
@@ -72,7 +87,7 @@ class PulsarService:
 
         with cls._lock:
             if cache_key not in cls._instances:
-                repo = MODELS[model_id]["repo"]
+                repo = _resolve_repo(MODELS[model_id])
                 instance = pulsar_module.Pulsar(
                     seed=key,
                     repo=repo,

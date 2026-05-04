@@ -275,12 +275,19 @@ export const useChatStore = defineStore('chat', () => {
     wsClient.on('read', handleRead)
     wsClient.on('revoke', handleRevoke)
     wsClient.on('kicked', handleKicked)
+    wsClient.on('auth_failed', handleAuthFailed)
+    wsClient.on('_auth_failed', handleAuthFailed)
   }
 
   function handleKicked() {
     wsClient.disconnect()
     // Emit a custom event for App.vue to handle
     window.dispatchEvent(new CustomEvent('ws-kicked'))
+  }
+
+  function handleAuthFailed() {
+    wsClient.disconnect()
+    window.dispatchEvent(new CustomEvent('ws-auth-failed'))
   }
 
   return {

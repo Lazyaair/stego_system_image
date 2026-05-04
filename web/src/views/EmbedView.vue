@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { stegoApi, type Model } from '../api/stego'
+import { ref, computed, onMounted } from 'vue'
+import { stegoApi, type Algorithm, type Model } from '../api/stego'
 
-const models = ref<Model[]>([])
+const algorithms = ref<Algorithm[]>([])
+const selectedAlgorithm = ref('')
 const selectedModel = ref('')
 const message = ref('')
 const key = ref('')
@@ -12,18 +13,30 @@ const isCheckingCapacity = ref(false)
 const capacityInfo = ref<{ valid: boolean; max_capacity: number; error?: string } | null>(null)
 const error = ref('')
 
+const models = computed<Model[]>(() => {
+  return algorithms.value.find(a => a.id === selectedAlgorithm.value)?.models || []
+})
+
 onMounted(async () => {
   try {
-    const res = await stegoApi.getModels()
-    models.value = res.models
-    const defaultModel = res.models.find(m => m.default)
-    if (defaultModel) {
-      selectedModel.value = defaultModel.id
+    const res = await stegoApi.getAlgorithms()
+    algorithms.value = res.algorithms
+    const defaultAlgo = res.algorithms.find(a => a.default) || res.algorithms[0]
+    if (defaultAlgo) {
+      selectedAlgorithm.value = defaultAlgo.id
+      const defaultModel = defaultAlgo.models.find(m => m.default) || defaultAlgo.models[0]
+      if (defaultModel) selectedModel.value = defaultModel.id
     }
   } catch (e: any) {
-    error.value = '获取模型列表失败'
+    error.value = '获取算法列表失败'
   }
 })
+
+function onAlgorithmChange() {
+  capacityInfo.value = null
+  const defaultModel = models.value.find(m => m.default) || models.value[0]
+  selectedModel.value = defaultModel?.id || ''
+}
 
 async function checkCapacity() {
   const keyCheck = stegoApi.validateKey(key.value)
@@ -41,7 +54,12 @@ async function checkCapacity() {
   error.value = ''
 
   try {
-    const result = await stegoApi.checkCapacity(message.value, key.value, selectedModel.value)
+    const result = await stegoApi.checkCapacity(
+      message.value,
+      key.value,
+      selectedModel.value,
+      selectedAlgorithm.value,
+    )
     capacityInfo.value = result
     if (!result.valid) {
       error.value = result.error || '消息超出容量'
@@ -70,7 +88,12 @@ async function handleEmbed() {
   stegoImage.value = ''
 
   try {
-    const result = await stegoApi.embed(message.value, key.value, selectedModel.value)
+    const result = await stegoApi.embed(
+      message.value,
+      key.value,
+      selectedModel.value,
+      selectedAlgorithm.value,
+    )
     if (result.status === 'success' && result.stego_image) {
       stegoImage.value = result.stego_image
     } else {
@@ -101,7 +124,7 @@ function downloadImage() {
     <!-- Page Header -->
     <div class="mb-6">
       <h1 class="text-3xl font-extrabold tracking-tight text-on-surface mb-1">隐写工具箱</h1>
-      <p class="text-on-surface-variant text-sm font-medium opacity-70">基于 Pulsar 算法的可证安全图像隐写</p>
+      <p class="text-on-surface-variant text-sm font-medium opacity-70">可证安全图像隐写 · Pulsar / SparSample 双引擎</p>
     </div>
 
     <!-- Tab Bar -->
@@ -118,12 +141,20 @@ function downloadImage() {
 
     <!-- Form -->
     <div class="space-y-6">
-      <!-- Model select -->
-      <div class="space-y-2">
-        <label class="text-xs font-bold text-on-surface-variant uppercase ml-1">选择模型</label>
-        <select v-model="selectedModel" class="input-field">
-          <option v-for="m in models" :key="m.id" :value="m.id">{{ m.name }}</option>
-        </select>
+      <!-- Algorithm + Model selects -->
+      <div class="grid grid-cols-2 gap-3">
+        <div class="space-y-2">
+          <label class="text-xs font-bold text-on-surface-variant uppercase ml-1">选择算法</label>
+          <select v-model="selectedAlgorithm" class="input-field" @change="onAlgorithmChange">
+            <option v-for="a in algorithms" :key="a.id" :value="a.id">{{ a.name }}</option>
+          </select>
+        </div>
+        <div class="space-y-2">
+          <label class="text-xs font-bold text-on-surface-variant uppercase ml-1">选择模型</label>
+          <select v-model="selectedModel" class="input-field">
+            <option v-for="m in models" :key="m.id" :value="m.id">{{ m.name }}</option>
+          </select>
+        </div>
       </div>
 
       <!-- Secret message -->

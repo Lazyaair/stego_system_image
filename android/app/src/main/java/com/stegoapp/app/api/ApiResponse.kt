@@ -10,6 +10,18 @@ data class ModelsResponse(
     val models: List<Model>
 )
 
+data class Algorithm(
+    val id: String,
+    val name: String,
+    val default: Boolean,
+    val chat_default: Boolean,
+    val models: List<Model>
+)
+
+data class AlgorithmsResponse(
+    val algorithms: List<Algorithm>
+)
+
 data class CapacityResponse(
     val valid: Boolean,
     val message_length: Int,
@@ -30,6 +42,7 @@ data class UserCodeResponse(
 data class EmbedResponse(
     val status: String,
     val stego_image: String?,
+    val algorithm: String?,
     val model: String?,
     val message_length: Int?,
     val error: String?,
@@ -40,6 +53,7 @@ data class EmbedResponse(
 data class ExtractResponse(
     val status: String,
     val secret_message: String?,
+    val algorithm: String?,
     val model: String?,
     val error: String?,
     val is_demo: Boolean

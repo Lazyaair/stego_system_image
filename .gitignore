@@ -9,3 +9,15 @@ __pycache__/
 
 # External Pulsar project (checked out locally, not part of this repo)
 pulsar/
+
+# Auto-generated per-install server secrets (persistent across restarts)
+server/.jwt_secret
+
+# Model weights (large binaries; user provisions locally)
+models/
+
+# External SparSample artifact zip unpack at repo root (local reference only)
+/sparsample/
+
+# Demo output
+test/sparsample/t.png

@@ -25,8 +25,26 @@ function onKicked() {
   router.push('/login')
   alert('您的账号已在其他设备登录。')
 }
-onMounted(() => window.addEventListener('ws-kicked', onKicked))
-onUnmounted(() => window.removeEventListener('ws-kicked', onKicked))
+// WS 握手鉴权失败(code=4003 或本地 token 被 server 拒绝)
+function onAuthFailed() {
+  auth.onKicked()
+  router.push('/login')
+  alert('登录已失效,请重新登录。')
+}
+onMounted(() => {
+  window.addEventListener('ws-kicked', onKicked)
+  window.addEventListener('ws-auth-failed', onAuthFailed)
+  // 启动时若有本地 token,向 server 验证;失败(401/403)则清除并跳登录
+  if (auth.token) {
+    auth.verify().then((ok) => {
+      if (!ok) router.push('/login')
+    })
+  }
+})
+onUnmounted(() => {
+  window.removeEventListener('ws-kicked', onKicked)
+  window.removeEventListener('ws-auth-failed', onAuthFailed)
+})
 
 // Connect WebSocket when authenticated
 watch(

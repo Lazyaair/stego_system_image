@@ -79,6 +79,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import androidx.compose.foundation.Image
+import com.stegoapp.app.api.Algorithm
 import com.stegoapp.app.api.ApiClient
 import com.stegoapp.app.api.Model
 import kotlinx.coroutines.Dispatchers
@@ -100,18 +101,28 @@ private const val TAB_EXTRACT = 1
 fun StegoToolScreen() {
     var activeTab by remember { mutableIntStateOf(TAB_EMBED) }
     val context = LocalContext.current
-    var models by remember { mutableStateOf<List<Model>>(emptyList()) }
-    var selectedModel by remember { mutableStateOf("celebahq") }
+    var algorithms by remember { mutableStateOf<List<Algorithm>>(emptyList()) }
+    var selectedAlgorithm by remember { mutableStateOf("") }
+    var selectedModel by remember { mutableStateOf("") }
+    val models = remember(algorithms, selectedAlgorithm) {
+        algorithms.find { it.id == selectedAlgorithm }?.models ?: emptyList()
+    }
 
     LaunchedEffect(Unit) {
         try {
-            val response = withContext(Dispatchers.IO) { ApiClient.stegoApi.getModels() }
+            val response = withContext(Dispatchers.IO) { ApiClient.stegoApi.getAlgorithms() }
             if (response.isSuccessful) {
-                models = response.body()?.models ?: emptyList()
-                models.find { it.default }?.let { selectedModel = it.id }
+                val algos = response.body()?.algorithms ?: emptyList()
+                algorithms = algos
+                val defaultAlgo = algos.find { it.default } ?: algos.firstOrNull()
+                if (defaultAlgo != null) {
+                    selectedAlgorithm = defaultAlgo.id
+                    selectedModel = (defaultAlgo.models.find { it.default }
+                        ?: defaultAlgo.models.firstOrNull())?.id ?: ""
+                }
             }
         } catch (_: Exception) {
-            // Silent: default model still works
+            // Silent: default empty state; UI handles gracefully
         }
     }
 
@@ -142,17 +153,49 @@ fun StegoToolScreen() {
             Spacer(modifier = Modifier.height(8.dp))
             ModeSwitcher(activeTab = activeTab, onSelect = { activeTab = it })
             Spacer(modifier = Modifier.height(24.dp))
-            ModelSelector(
-                models = models,
-                selectedModel = selectedModel,
-                onSelect = { selectedModel = it },
-                helper = if (activeTab == TAB_EXTRACT) "必须与嵌入时使用的模型一致" else null,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                AlgorithmSelector(
+                    algorithms = algorithms,
+                    selectedAlgorithm = selectedAlgorithm,
+                    onSelect = { newId ->
+                        selectedAlgorithm = newId
+                        val algo = algorithms.find { it.id == newId }
+                        selectedModel = (algo?.models?.find { it.default }
+                            ?: algo?.models?.firstOrNull())?.id ?: ""
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+                ModelSelector(
+                    models = models,
+                    selectedModel = selectedModel,
+                    onSelect = { selectedModel = it },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            if (activeTab == TAB_EXTRACT) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "算法和模型必须与嵌入时一致",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Spacer(modifier = Modifier.height(16.dp))
             if (activeTab == TAB_EMBED) {
-                EmbedPane(context = context, modelId = selectedModel)
+                EmbedPane(
+                    context = context,
+                    algorithmId = selectedAlgorithm,
+                    modelId = selectedModel,
+                )
             } else {
-                ExtractPane(context = context, modelId = selectedModel)
+                ExtractPane(
+                    context = context,
+                    algorithmId = selectedAlgorithm,
+                    modelId = selectedModel,
+                )
             }
             Spacer(modifier = Modifier.height(32.dp))
         }
@@ -194,51 +237,88 @@ private fun ModeSwitcher(activeTab: Int, onSelect: (Int) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+private fun AlgorithmSelector(
+    algorithms: List<Algorithm>,
+    selectedAlgorithm: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = modifier,
+    ) {
+        OutlinedTextField(
+            value = algorithms.find { it.id == selectedAlgorithm }?.name ?: selectedAlgorithm,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("算法") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            algorithms.forEach { algo ->
+                DropdownMenuItem(
+                    text = { Text(algo.name) },
+                    onClick = {
+                        onSelect(algo.id)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun ModelSelector(
     models: List<Model>,
     selectedModel: String,
     onSelect: (String) -> Unit,
-    helper: String? = null,
+    modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    Column {
-        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
-            OutlinedTextField(
-                value = models.find { it.id == selectedModel }?.name ?: selectedModel,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("生成模型") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                shape = MaterialTheme.shapes.medium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(),
-            )
-            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                models.forEach { model ->
-                    DropdownMenuItem(
-                        text = { Text(model.name) },
-                        onClick = {
-                            onSelect(model.id)
-                            expanded = false
-                        },
-                    )
-                }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = modifier,
+    ) {
+        OutlinedTextField(
+            value = models.find { it.id == selectedModel }?.name ?: selectedModel,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("模型") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            models.forEach { model ->
+                DropdownMenuItem(
+                    text = { Text(model.name) },
+                    onClick = {
+                        onSelect(model.id)
+                        expanded = false
+                    },
+                )
             }
-        }
-        if (helper != null) {
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = helper,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
 
 @Composable
-private fun EmbedPane(context: android.content.Context, modelId: String) {
+private fun EmbedPane(
+    context: android.content.Context,
+    algorithmId: String,
+    modelId: String,
+) {
     val scope = rememberCoroutineScope()
     var message by remember { mutableStateOf("") }
     var key by remember { mutableStateOf("") }
@@ -303,7 +383,7 @@ private fun EmbedPane(context: android.content.Context, modelId: String) {
                         errorMessage = null
                         try {
                             val resp = withContext(Dispatchers.IO) {
-                                ApiClient.stegoApi.checkCapacity(message, key, modelId)
+                                ApiClient.stegoApi.checkCapacity(message, key, modelId, algorithmId)
                             }
                             if (resp.isSuccessful) {
                                 val body = resp.body()
@@ -340,7 +420,7 @@ private fun EmbedPane(context: android.content.Context, modelId: String) {
                         stegoImageBase64 = null
                         try {
                             val resp = withContext(Dispatchers.IO) {
-                                ApiClient.stegoApi.embed(message, key, modelId)
+                                ApiClient.stegoApi.embed(message, key, modelId, algorithmId)
                             }
                             val body = resp.body()
                             if (resp.isSuccessful && body?.status == "success") {
@@ -459,7 +539,11 @@ private fun EmbedResultCard(
 }
 
 @Composable
-private fun ExtractPane(context: android.content.Context, modelId: String) {
+private fun ExtractPane(
+    context: android.content.Context,
+    algorithmId: String,
+    modelId: String,
+) {
     val scope = rememberCoroutineScope()
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var selectedImageFile by remember { mutableStateOf<File?>(null) }
@@ -576,8 +660,9 @@ private fun ExtractPane(context: android.content.Context, modelId: String) {
                         )
                         val keyPart = key.toRequestBody("text/plain".toMediaTypeOrNull())
                         val modelPart = modelId.toRequestBody("text/plain".toMediaTypeOrNull())
+                        val algoPart = algorithmId.toRequestBody("text/plain".toMediaTypeOrNull())
                         val resp = withContext(Dispatchers.IO) {
-                            ApiClient.stegoApi.extract(imagePart, keyPart, modelPart)
+                            ApiClient.stegoApi.extract(imagePart, keyPart, modelPart, algoPart)
                         }
                         if (resp.isSuccessful && resp.body()?.status == "success") {
                             extractedMessage = resp.body()?.secret_message

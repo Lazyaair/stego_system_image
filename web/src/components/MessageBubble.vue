@@ -51,7 +51,7 @@ async function extractSecret() {
     for (let i = 0; i < byteString.length; i++) bytes[i] = byteString.charCodeAt(i)
     const blob = new Blob([bytes], { type: 'image/png' })
     const file = new File([blob], 'stego.png', { type: 'image/png' })
-    const res = await stegoApi.extract(file, props.stegoKey, 'celebahq')
+    const res = await stegoApi.extract(file, props.stegoKey)
     extractedText.value = res.secret_message || '(空)'
   } catch (e: any) {
     extractedText.value = '提取失败: ' + (e.response?.data?.detail || e.message)

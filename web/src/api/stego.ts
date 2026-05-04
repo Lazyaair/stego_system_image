@@ -6,8 +6,20 @@ export interface Model {
   default: boolean
 }
 
+export interface Algorithm {
+  id: string
+  name: string
+  default: boolean
+  chat_default: boolean
+  models: Model[]
+}
+
 export interface ModelsResponse {
   models: Model[]
+}
+
+export interface AlgorithmsResponse {
+  algorithms: Algorithm[]
 }
 
 export interface CapacityResponse {
@@ -20,6 +32,7 @@ export interface CapacityResponse {
 export interface EmbedResponse {
   status: string
   stego_image?: string
+  algorithm?: string
   model?: string
   message_length?: number
   error?: string
@@ -30,6 +43,7 @@ export interface EmbedResponse {
 export interface ExtractResponse {
   status: string
   secret_message?: string
+  algorithm?: string
   model?: string
   error?: string
   is_demo: boolean
@@ -40,36 +54,60 @@ export interface MaxCapacityResponse {
 }
 
 export const stegoApi = {
-  async getModels(): Promise<ModelsResponse> {
-    const response = await apiClient.get<ModelsResponse>('/api/v1/stego/models')
+  async getAlgorithms(): Promise<AlgorithmsResponse> {
+    const response = await apiClient.get<AlgorithmsResponse>('/api/v1/stego/algorithms')
     return response.data
   },
 
-  async checkCapacity(message: string, key: string, model: string): Promise<CapacityResponse> {
+  async getModels(algorithm?: string): Promise<ModelsResponse> {
+    const params = algorithm ? { algorithm } : undefined
+    const response = await apiClient.get<ModelsResponse>('/api/v1/stego/models', { params })
+    return response.data
+  },
+
+  async checkCapacity(
+    message: string,
+    key: string,
+    model?: string,
+    algorithm?: string,
+  ): Promise<CapacityResponse> {
     const formData = new FormData()
     formData.append('message', message)
     formData.append('key', key)
-    formData.append('model', model)
+    if (model) formData.append('model', model)
+    if (algorithm) formData.append('algorithm', algorithm)
 
     const response = await apiClient.post<CapacityResponse>('/api/v1/stego/capacity', formData)
     return response.data
   },
 
-  async embed(message: string, key: string, model: string): Promise<EmbedResponse> {
+  async embed(
+    message: string,
+    key: string,
+    model?: string,
+    algorithm?: string,
+  ): Promise<EmbedResponse> {
     const formData = new FormData()
     formData.append('message', message)
     formData.append('key', key)
-    formData.append('model', model)
+    if (model) formData.append('model', model)
+    if (algorithm) formData.append('algorithm', algorithm)
 
     const response = await apiClient.post<EmbedResponse>('/api/v1/stego/embed', formData)
     return response.data
   },
 
-  async extract(stegoImage: File, key: string, model: string): Promise<ExtractResponse> {
+  async extract(
+    stegoImage: File,
+    key: string,
+    model?: string,
+    algorithm?: string,
+  ): Promise<ExtractResponse> {
     const formData = new FormData()
     formData.append('stego_image', stegoImage)
     formData.append('key', key)
-    formData.append('model', model)
+    if (model) formData.append('model', model)
+    if (algorithm) formData.append('algorithm', algorithm)
 
     const response = await apiClient.post<ExtractResponse>('/api/v1/stego/extract', formData)
     return response.data
@@ -85,10 +123,15 @@ export const stegoApi = {
     return { valid: true }
   },
 
-  async getMaxCapacity(key: string, model: string = 'celebahq'): Promise<MaxCapacityResponse> {
-    const { data } = await apiClient.get('/api/v1/stego/max-capacity', {
-      params: { key, model }
-    })
+  async getMaxCapacity(
+    key: string,
+    model?: string,
+    algorithm?: string,
+  ): Promise<MaxCapacityResponse> {
+    const params: Record<string, string> = { key }
+    if (model) params.model = model
+    if (algorithm) params.algorithm = algorithm
+    const { data } = await apiClient.get('/api/v1/stego/max-capacity', { params })
     return data
   },
 }

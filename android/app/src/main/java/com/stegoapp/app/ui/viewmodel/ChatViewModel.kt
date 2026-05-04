@@ -247,7 +247,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val key = getStegoKey(true)
                 val stegoApi = ApiClient.stegoApi
-                val res = stegoApi.embed(secretMessage, key, "celebahq")
+                val res = stegoApi.embed(secretMessage, key)
                 if (!res.isSuccessful) {
                     _stegoLoading.value = false
                     return@launch
@@ -309,10 +309,9 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 val requestFile = tempFile.asRequestBody("image/png".toMediaTypeOrNull())
                 val part = okhttp3.MultipartBody.Part.createFormData("stego_image", "stego.png", requestFile)
                 val keyBody = key.toRequestBody("text/plain".toMediaTypeOrNull())
-                val modelBody = "celebahq".toRequestBody("text/plain".toMediaTypeOrNull())
 
                 val stegoApi = ApiClient.stegoApi
-                val res = stegoApi.extract(part, keyBody, modelBody)
+                val res = stegoApi.extract(part, keyBody)
                 tempFile.delete()
 
                 if (res.isSuccessful) {
