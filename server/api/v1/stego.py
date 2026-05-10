@@ -2,6 +2,7 @@ from typing import Optional, Tuple, Type
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 import base64
 
 from services.pulsar_service import PulsarService
@@ -105,7 +106,7 @@ async def get_max_capacity(
 
     try:
         key_bytes = key.encode("utf-8")
-        max_capacity = service.get_capacity(model_id, key_bytes)
+        max_capacity = await run_in_threadpool(service.get_capacity, model_id, key_bytes)
         return JSONResponse(content={"max_capacity": max_capacity})
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -133,7 +134,9 @@ async def check_capacity(
     try:
         key_bytes = key.encode("utf-8")
         message_bytes = message.encode("utf-8")
-        result = service.check_capacity(message_bytes, model_id, key_bytes)
+        result = await run_in_threadpool(
+            service.check_capacity, message_bytes, model_id, key_bytes
+        )
         return JSONResponse(content=result)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -165,7 +168,9 @@ async def embed_message(
         key_bytes = key.encode("utf-8")
         message_bytes = message.encode("utf-8")
 
-        capacity_check = service.check_capacity(message_bytes, model_id, key_bytes)
+        capacity_check = await run_in_threadpool(
+            service.check_capacity, message_bytes, model_id, key_bytes
+        )
         if not capacity_check["valid"]:
             return JSONResponse(
                 status_code=400,
@@ -176,7 +181,9 @@ async def embed_message(
                 },
             )
 
-        png_data = service.embed(message_bytes, model_id, key_bytes)
+        png_data = await run_in_threadpool(
+            service.embed, message_bytes, model_id, key_bytes
+        )
         stego_base64 = base64.b64encode(png_data).decode("utf-8")
 
         return JSONResponse(content={
@@ -217,7 +224,9 @@ async def extract_message(
         key_bytes = key.encode("utf-8")
         image_data = await stego_image.read()
 
-        message_bytes = service.extract(image_data, model_id, key_bytes)
+        message_bytes = await run_in_threadpool(
+            service.extract, image_data, model_id, key_bytes
+        )
         message_str = message_bytes.rstrip(b"\x00").decode("utf-8", errors="replace")
 
         return JSONResponse(content={

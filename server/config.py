@@ -25,8 +25,10 @@ JWT_SECRET = _load_or_create_jwt_secret()
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_DAYS = int(os.getenv("JWT_EXPIRE_DAYS", "7"))
 
-# Database
-DATABASE_PATH = os.getenv("DATABASE_PATH", "stego.db")
+# Database — 默认放在 server/ 目录下,避免随启动 cwd 飘移
+DATABASE_PATH = os.getenv(
+    "DATABASE_PATH", str(Path(__file__).parent / "stego.db")
+)
 
 # Message Queue
 QUEUE_DEFAULT_TTL = int(os.getenv("QUEUE_DEFAULT_TTL", "86400"))  # seconds
