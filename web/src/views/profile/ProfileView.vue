@@ -1,15 +1,22 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import { useSettingsStore } from '../../stores/settings'
 import { getMyCode, resetCode } from '../../api/invite'
 
 const router = useRouter()
 const auth = useAuthStore()
+const settings = useSettingsStore()
 
 const inviteCode = ref('')
 const inviteLink = ref('')
 const loading = ref(false)
+
+// E2EE phrase 表单状态
+const phraseInput = ref('')
+const savingPhrase = ref(false)
+const phraseError = ref('')
 
 onMounted(async () => {
   try {
@@ -39,6 +46,40 @@ function copyCode() {
 async function handleLogout() {
   await auth.logout()
   router.push('/login')
+}
+
+// 指纹 hex 转成 a1:b2:c3... 展示
+function formatFingerprint(hex: string): string {
+  if (!hex) return ''
+  const pairs: string[] = []
+  for (let i = 0; i < hex.length; i += 2) pairs.push(hex.slice(i, i + 2))
+  return pairs.join(':')
+}
+
+const fingerprintPretty = computed(() => formatFingerprint(settings.fingerprintHex))
+
+async function handleSavePhrase() {
+  phraseError.value = ''
+  const val = phraseInput.value.trim()
+  if (!val) {
+    phraseError.value = '请输入加密助记词'
+    return
+  }
+  savingPhrase.value = true
+  try {
+    await settings.setPhrase(val)
+    phraseInput.value = ''
+  } catch (e: unknown) {
+    phraseError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    savingPhrase.value = false
+  }
+}
+
+async function handleResetPhrase() {
+  if (!window.confirm('确定要重置加密助记词吗？之前加密的消息可能无法再解密。')) return
+  await settings.clear()
+  phraseInput.value = ''
 }
 </script>
 
@@ -98,6 +139,69 @@ async function handleLogout() {
           </div>
           <span class="material-symbols-outlined text-on-surface-variant group-hover:translate-x-1 transition-transform">chevron_right</span>
         </button>
+      </div>
+    </section>
+
+    <!-- E2EE Phrase -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="section-title">加密助记词</h2>
+        <span
+          v-if="settings.hasE2EE"
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-tertiary-container text-on-tertiary-container text-[10px] font-bold tracking-wide"
+        >
+          <span class="material-symbols-outlined text-xs">verified</span>
+          已配置
+        </span>
+        <span
+          v-else
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-error-container text-on-error-container text-[10px] font-bold tracking-wide"
+        >
+          <span class="material-symbols-outlined text-xs">warning</span>
+          未配置
+        </span>
+      </div>
+      <div class="bg-surface-container rounded-xl p-6 space-y-4">
+        <p class="text-sm text-on-surface-variant leading-relaxed">
+          助记词仅保存在本机,用于派生端到端加密密钥。请告知联系人以便互相解密消息。
+        </p>
+        <div class="space-y-2">
+          <input
+            v-model="phraseInput"
+            type="text"
+            class="input-field"
+            placeholder="输入任意助记词,例如：sunrise-river-42"
+            :disabled="savingPhrase"
+            @keyup.enter="handleSavePhrase"
+          />
+          <p v-if="phraseError" class="text-xs text-error">{{ phraseError }}</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button
+            class="btn-primary text-sm"
+            :disabled="savingPhrase || !phraseInput.trim()"
+            @click="handleSavePhrase"
+          >
+            <span class="material-symbols-outlined text-sm mr-1">save</span>
+            {{ savingPhrase ? '保存中...' : '保存' }}
+          </button>
+          <button
+            v-if="settings.hasE2EE"
+            class="btn-ghost text-sm"
+            :disabled="savingPhrase"
+            @click="handleResetPhrase"
+          >
+            重置
+          </button>
+        </div>
+        <div v-if="settings.hasE2EE" class="pt-3 border-t border-outline-variant/10 space-y-1">
+          <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">
+            指纹 (分享给对方核对)
+          </p>
+          <code
+            class="block font-mono text-xs text-tertiary tracking-widest break-all bg-surface-container-lowest px-3 py-2 rounded-lg"
+          >{{ fingerprintPretty }}</code>
+        </div>
       </div>
     </section>
 
