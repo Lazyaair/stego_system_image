@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MarkEmailRead
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -98,6 +99,7 @@ fun ContactsScreen(
                         ContactRow(
                             displayName = contact.nickname.ifEmpty { contact.username },
                             secondary = "@${contact.username}",
+                            unencrypted = contact.peerUserKeyHex.isNullOrEmpty(),
                             onClick = { onOpenDetail(contact.userId) },
                         )
                     }
@@ -173,6 +175,7 @@ private fun RequestsEntryCard(count: Int, onClick: () -> Unit) {
 private fun ContactRow(
     displayName: String,
     secondary: String,
+    unencrypted: Boolean,
     onClick: () -> Unit,
 ) {
     Row(
@@ -200,17 +203,50 @@ private fun ContactRow(
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = displayName,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Medium,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Medium,
+                )
+                if (unencrypted) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    UnencryptedBadge()
+                }
+            }
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = secondary,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun UnencryptedBadge() {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.LockOpen,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(12.dp),
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "未加密",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                fontWeight = FontWeight.SemiBold,
             )
         }
     }

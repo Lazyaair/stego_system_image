@@ -23,4 +23,15 @@ interface ContactDao {
 
     @Query("DELETE FROM contacts")
     suspend fun deleteAll()
+
+    @Query(
+        "UPDATE contacts SET peerPhrase = :peerPhrase, peerUserKeyHex = :peerUserKeyHex, " +
+            "peerFingerprintHex = :peerFingerprintHex WHERE userId = :userId"
+    )
+    suspend fun updatePeerE2EE(
+        userId: String,
+        peerPhrase: String?,
+        peerUserKeyHex: String?,
+        peerFingerprintHex: String?,
+    )
 }

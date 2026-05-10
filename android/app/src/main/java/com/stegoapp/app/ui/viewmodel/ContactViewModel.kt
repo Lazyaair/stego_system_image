@@ -4,10 +4,13 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.stegoapp.app.api.ApiClient
+import com.stegoapp.app.crypto.CryptoUtils
 import com.stegoapp.app.data.local.AppDatabase
 import com.stegoapp.app.data.local.entity.ContactEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ContactViewModel(app: Application) : AndroidViewModel(app) {
     private val db = AppDatabase.getInstance(app)
@@ -57,5 +60,50 @@ class ContactViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { contactDao.deleteById(userId) }
     }
 
+    private val _peerSaving = MutableStateFlow<Set<String>>(emptySet())
+    val peerSaving: StateFlow<Set<String>> = _peerSaving
+
+    /**
+     * 保存对方的 E2EE 助记词。派生 PBKDF2 100k 必须放 IO 线程。
+     * 空字符串视为清除 (全部三列写 null)。
+     */
+    fun savePeerPhrase(contactId: String, phrase: String) {
+        val trimmed = phrase.trim()
+        viewModelScope.launch {
+            _peerSaving.value = _peerSaving.value + contactId
+            try {
+                if (trimmed.isEmpty()) {
+                    contactDao.updatePeerE2EE(contactId, null, null, null)
+                } else {
+                    val (hex, fp) = withContext(Dispatchers.IO) {
+                        val userKey = CryptoUtils.deriveUserKey(trimmed)
+                        val fingerprint = CryptoUtils.fingerprint(userKey)
+                        userKey.toHexLower() to fingerprint.toHexLower()
+                    }
+                    contactDao.updatePeerE2EE(contactId, trimmed, hex, fp)
+                }
+            } catch (e: Exception) {
+                _error.value = e.message ?: "派生对方密钥失败"
+            } finally {
+                _peerSaving.value = _peerSaving.value - contactId
+            }
+        }
+    }
+
+    fun clearPeerPhrase(contactId: String) = savePeerPhrase(contactId, "")
+
     fun clearError() { _error.value = null }
+
+    private fun ByteArray.toHexLower(): String {
+        val sb = StringBuilder(size * 2)
+        for (b in this) {
+            val v = b.toInt() and 0xff
+            sb.append(HEX[v ushr 4]).append(HEX[v and 0x0f])
+        }
+        return sb.toString()
+    }
+
+    companion object {
+        private val HEX = "0123456789abcdef".toCharArray()
+    }
 }

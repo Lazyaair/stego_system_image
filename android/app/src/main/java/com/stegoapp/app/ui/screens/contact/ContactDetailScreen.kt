@@ -20,13 +20,17 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.outlined.AlternateEmail
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.LockReset
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.stegoapp.app.data.local.entity.ContactEntity
@@ -59,7 +64,9 @@ fun ContactDetailScreen(
 ) {
     val contacts by contactViewModel.contacts.collectAsState()
     val contact = contacts.find { it.userId == userId }
+    val peerSavingSet by contactViewModel.peerSaving.collectAsState()
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showPeerResetDialog by remember { mutableStateOf(false) }
 
     val displayName = contact?.nickname?.ifEmpty { contact.username } ?: contact?.username ?: "联系人"
 
@@ -122,11 +129,37 @@ fun ContactDetailScreen(
             HeaderBlock(displayName = displayName, username = contact.username)
             Spacer(modifier = Modifier.height(24.dp))
             InfoCard(contact = contact)
+            Spacer(modifier = Modifier.height(24.dp))
+            PeerE2EECard(
+                contact = contact,
+                saving = peerSavingSet.contains(contact.userId),
+                onSave = { contactViewModel.savePeerPhrase(contact.userId, it) },
+                onReset = { showPeerResetDialog = true },
+            )
             Spacer(modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.height(32.dp))
             ChatCTA(onOpenChat = { onOpenChat(contact.userId) })
             Spacer(modifier = Modifier.height(24.dp))
         }
+    }
+
+    if (showPeerResetDialog && contact != null) {
+        AlertDialog(
+            onDismissRequest = { showPeerResetDialog = false },
+            title = { Text("清除对方助记词?") },
+            text = { Text("清除后将无法解密 $displayName 的加密消息,直到重新录入。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPeerResetDialog = false
+                    contactViewModel.clearPeerPhrase(contact.userId)
+                }) {
+                    Text("清除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPeerResetDialog = false }) { Text("取消") }
+            },
+        )
     }
 
     if (showDeleteDialog && contact != null) {
@@ -267,6 +300,141 @@ private fun ChatCTA(onOpenChat: () -> Unit) {
             Text("发起聊天", style = MaterialTheme.typography.titleMedium)
         }
     }
+}
+
+@Composable
+private fun PeerE2EECard(
+    contact: ContactEntity,
+    saving: Boolean,
+    onSave: (String) -> Unit,
+    onReset: () -> Unit,
+) {
+    val savedPhrase = contact.peerPhrase.orEmpty()
+    val fingerprint = contact.peerFingerprintHex.orEmpty()
+    val configured = !contact.peerUserKeyHex.isNullOrEmpty()
+    var input by remember(savedPhrase) { mutableStateOf(savedPhrase) }
+
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Outlined.Lock,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "对方的加密助记词",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    PeerStatusChip(configured = configured)
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it },
+                    placeholder = { Text("与对方线下约定的助记词") },
+                    singleLine = true,
+                    enabled = !saving,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (configured && fingerprint.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "对方指纹",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = formatFingerprint(fingerprint),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Button(
+                        onClick = { onSave(input) },
+                        enabled = !saving && input.isNotBlank(),
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        if (saving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("派生中...")
+                        } else {
+                            Text("保存")
+                        }
+                    }
+                    if (configured) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        TextButton(onClick = onReset) {
+                            Icon(
+                                imageVector = Icons.Outlined.LockReset,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("清除")
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "只用于与该联系人建立端到端会话,不会上传服务器",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun PeerStatusChip(configured: Boolean) {
+    val label = if (configured) "已配置" else "未配置"
+    val container = if (configured) {
+        MaterialTheme.colorScheme.tertiaryContainer
+    } else {
+        MaterialTheme.colorScheme.errorContainer
+    }
+    val content = if (configured) {
+        MaterialTheme.colorScheme.onTertiaryContainer
+    } else {
+        MaterialTheme.colorScheme.onErrorContainer
+    }
+    Surface(color = container, shape = MaterialTheme.shapes.small) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = content,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        )
+    }
+}
+
+private fun formatFingerprint(hex: String): String {
+    val clean = hex.lowercase().filter { it.isLetterOrDigit() }
+    val bytes = clean.chunked(2).take(8)
+    return bytes.joinToString(":")
 }
 
 private fun formatAddedAt(raw: String): String {
