@@ -1,0 +1,5 @@
+ When it came to languages, VF Native is trying to use VF Native by showing different ways it is implementing it. I suppose that these suggestions are too short, and I suppose that in my opinion here VF Native not only gives what is really needed but also allows to form an executable program that is portable for permanent use in native platforms (and if you need to run VF Native, there are also uses for laro!).
+
+VF Native as design
+
+VF Native is designed with the N project as a strategic starting point for

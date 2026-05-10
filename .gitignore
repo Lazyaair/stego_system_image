@@ -7,17 +7,15 @@ __pycache__/
 # Superpowers skill local runtime data
 .superpowers/
 
-# External Pulsar project (checked out locally, not part of this repo)
-pulsar/
-
 # Auto-generated per-install server secrets (persistent across restarts)
 server/.jwt_secret
 
 # Model weights (large binaries; user provisions locally)
 models/
 
-# External SparSample artifact zip unpack at repo root (local reference only)
-/sparsample/
+# Pulsar 基准测试数据与嵌入式 git 目录(不入库)
+pulsar/bench-results/
+pulsar/.git/
 
 # Demo output
 test/sparsample/t.png
