@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
-const props = defineProps<{
-  stegoMaxCapacity: number
-  stegoModeDisabled: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    stegoMaxCapacity: number
+    stegoModeDisabled: boolean
+    disabled?: boolean
+    disabledReason?: string
+  }>(),
+  { disabled: false, disabledReason: '' },
+)
 
 const emit = defineEmits<{
   send: [content: string, isStegoMode: boolean]
@@ -16,6 +21,7 @@ const stegoMode = ref(false)
 const byteLength = computed(() => new TextEncoder().encode(content.value).length)
 const overCapacity = computed(() => stegoMode.value && byteLength.value > props.stegoMaxCapacity)
 const canSend = computed(() => {
+  if (props.disabled) return false
   const trimmed = content.value.trim()
   if (!trimmed) return false
   if (stegoMode.value && overCapacity.value) return false
@@ -29,7 +35,7 @@ function handleSend() {
 }
 
 function toggleStegoMode() {
-  if (props.stegoModeDisabled) return
+  if (props.stegoModeDisabled || props.disabled) return
   stegoMode.value = !stegoMode.value
 }
 </script>
@@ -47,16 +53,17 @@ function toggleStegoMode() {
         :class="stegoMode
           ? 'bg-tertiary-container text-on-tertiary-container'
           : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'"
-        :disabled="stegoModeDisabled"
-        :title="stegoModeDisabled ? '加载中...' : (stegoMode ? '切换到普通模式' : '切换到隐写模式')"
+        :disabled="stegoModeDisabled || disabled"
+        :title="disabled ? (disabledReason || '未配置加密') : (stegoModeDisabled ? '加载中...' : (stegoMode ? '切换到普通模式' : '切换到隐写模式'))"
         @click="toggleStegoMode"
       >
         <span class="material-symbols-outlined text-xl">{{ stegoMode ? 'lock' : 'chat_bubble' }}</span>
       </button>
       <input
         v-model="content"
-        :placeholder="stegoMode ? '输入秘密消息...' : '输入消息...'"
-        class="flex-1 bg-surface-container border border-outline-variant/20 rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all"
+        :placeholder="disabled ? (disabledReason || '未配置加密,无法发送') : (stegoMode ? '输入秘密消息...' : '输入消息...')"
+        :disabled="disabled"
+        class="flex-1 bg-surface-container border border-outline-variant/20 rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         @keyup.enter="handleSend"
       />
       <button
