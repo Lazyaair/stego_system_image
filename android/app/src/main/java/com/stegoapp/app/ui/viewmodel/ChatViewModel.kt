@@ -3,6 +3,8 @@ package com.stegoapp.app.ui.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.stegoapp.app.crypto.CryptoUtils
+import com.stegoapp.app.crypto.SealedMessage
 import com.stegoapp.app.data.local.AppDatabase
 import com.stegoapp.app.data.local.entity.ContactEntity
 import com.stegoapp.app.data.local.entity.MessageEntity
@@ -24,7 +26,70 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private val messageDao = db.messageDao()
     private val contactDao = db.contactDao()
     private val blacklistDao = db.blacklistDao()
+    private val userSettingsDao = db.userSettingsDao()
     private val wsClient = WsClient.instance
+
+    // Active chat session + per-session mkey. Kept in memory only, never
+    // persisted (see spec §2 G2). null whenever self phrase or peer
+    // phrase for this contact is missing.
+    private val _activeContactId = MutableStateFlow<String?>(null)
+    val activeContactId: StateFlow<String?> = _activeContactId.asStateFlow()
+
+    private val _mkey = MutableStateFlow<ByteArray?>(null)
+    val mkey: StateFlow<ByteArray?> = _mkey.asStateFlow()
+
+    val isE2EEConfigured: StateFlow<Boolean> = _mkey
+        .map { it != null }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    private val _selfPhraseConfigured = MutableStateFlow(false)
+    val selfPhraseConfigured: StateFlow<Boolean> = _selfPhraseConfigured.asStateFlow()
+
+    private val _peerPhraseConfigured = MutableStateFlow(false)
+    val peerPhraseConfigured: StateFlow<Boolean> = _peerPhraseConfigured.asStateFlow()
+
+    private val _snackbar = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val snackbar = _snackbar.asSharedFlow()
+
+    init {
+        // Recompute mkey whenever activeContactId, self settings, or the
+        // contact row change (e.g. peer phrase updated from
+        // ContactDetailScreen).
+        viewModelScope.launch {
+            combine(
+                _activeContactId,
+                userSettingsDao.observe(),
+                contactDao.getAll(),
+            ) { contactId, self, contacts ->
+                Triple(contactId, self, contacts)
+            }.collect { (contactId, self, contacts) ->
+                _selfPhraseConfigured.value = self != null
+                if (contactId == null || self == null) {
+                    _peerPhraseConfigured.value = false
+                    _mkey.value = null
+                    return@collect
+                }
+                val contact = contacts.find { it.userId == contactId }
+                val peerHex = contact?.peerUserKeyHex
+                _peerPhraseConfigured.value = !peerHex.isNullOrEmpty()
+                if (peerHex.isNullOrEmpty()) {
+                    _mkey.value = null
+                    return@collect
+                }
+                _mkey.value = withContext(Dispatchers.Default) {
+                    runCatching {
+                        val selfKey = hexToBytes(self.userKeyHex)
+                        val peerKey = hexToBytes(peerHex)
+                        CryptoUtils.deriveMkey(selfKey, peerKey)
+                    }.getOrNull()
+                }
+            }
+        }
+    }
+
+    fun setActiveContact(contactId: String?) {
+        _activeContactId.value = contactId
+    }
 
     private val _pendingRequests = MutableStateFlow<List<PendingRequest>>(emptyList())
     val pendingRequests: StateFlow<List<PendingRequest>> = _pendingRequests
@@ -83,11 +148,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private fun fetchMaxCapacity() {
         viewModelScope.launch {
             try {
-                val key = _myInviteCode.value + _peerInviteCode.value
+                val key = getStegoKey()
                 val stegoApi = ApiClient.stegoApi
                 val res = stegoApi.getMaxCapacity(key)
                 if (res.isSuccessful) {
-                    _maxCapacity.value = res.body()?.max_capacity ?: 0
+                    val serverMax = res.body()?.max_capacity ?: 0
+                    // Sealed payload adds ~37% (base64url + AES-GCM tag + JSON
+                    // envelope, outer-base64url'd). Budget plaintext at 0.65 *
+                    // server max so the sealed blob we actually send fits.
+                    _maxCapacity.value = (serverMax * 0.65).toInt()
                 }
             } catch (_: Exception) {}
         }
@@ -98,12 +167,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         _stegoMode.value = !_stegoMode.value
     }
 
-    fun getStegoKey(isOutgoing: Boolean): String {
-        return if (isOutgoing) {
-            _myInviteCode.value + _peerInviteCode.value
-        } else {
-            _peerInviteCode.value + _myInviteCode.value
-        }
+    /**
+     * 隐写模型 seed 密钥 = invite_A 与 invite_B 按字节 XOR 的 hex 字符串。
+     * XOR 对称,两端独立计算结果一致,因此无需区分方向。
+     */
+    fun getStegoKey(): String {
+        val a = _myInviteCode.value.toByteArray(Charsets.UTF_8)
+        val b = _peerInviteCode.value.toByteArray(Charsets.UTF_8)
+        if (a.isEmpty() || b.isEmpty() || a.size != b.size) return ""
+        return CryptoUtils.xorBytes(a, b).joinToString("") { "%02x".format(it) }
     }
 
     fun connectWebSocket(token: String) {
@@ -165,12 +237,25 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
 
+        val rawContent = payload["content"] as? String ?: ""
+        val contentType = payload["content_type"] as? String ?: "text"
+
+        // For text messages, try to decrypt with a freshly-derived mkey for
+        // this sender (not necessarily the active chat's mkey — incoming
+        // messages from other contacts must still decrypt correctly).
+        // On failure, fall back to raw content (legacy plaintext).
+        val displayedContent: String = if (contentType == "text") {
+            decryptForContact(contact, rawContent) ?: rawContent
+        } else {
+            rawContent
+        }
+
         val entity = MessageEntity(
             id = msg.id ?: UUID.randomUUID().toString(),
             contactId = fromUserId,
             direction = "received",
-            content = payload["content"] as? String ?: "",
-            contentType = payload["content_type"] as? String ?: "text",
+            content = displayedContent,
+            contentType = contentType,
             stegoImage = payload["stego_image"] as? String,
             status = "delivered",
             burnAfter = (payload["burn_after"] as? Double)?.toInt() ?: 0,
@@ -211,9 +296,28 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     fun sendTextMessage(toUserId: String, content: String, fromUserId: String, fromUsername: String) {
         viewModelScope.launch {
+            // Gate: must have an mkey for the active chat. UI should have
+            // already disabled input, but fail loudly if not.
+            val activeMkey = _mkey.value
+            if (activeMkey == null || _activeContactId.value != toUserId) {
+                _snackbar.emit("端到端加密未配置,无法发送消息")
+                return@launch
+            }
+
+            val sealed = try {
+                withContext(Dispatchers.Default) {
+                    SealedMessage.seal(activeMkey, content)
+                }
+            } catch (e: Exception) {
+                _snackbar.emit("加密失败: ${e.message ?: "unknown"}")
+                return@launch
+            }
+
             val id = UUID.randomUUID().toString()
             val now = System.currentTimeMillis()
 
+            // Local storage: keep PLAINTEXT for the sender's own history.
+            // Sealed blob is wire-only.
             messageDao.insert(MessageEntity(
                 id = id,
                 contactId = toUserId,
@@ -232,7 +336,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                     "from_user_id" to fromUserId,
                     "from_username" to fromUsername,
                     "to_user_id" to toUserId,
-                    "content" to content,
+                    "content" to sealed,
                     "content_type" to "text",
                     "burn_after" to 0,
                     "is_first_contact" to false
@@ -241,13 +345,59 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Derive an mkey against the given contact (may differ from the
+     * active chat contact) and attempt to decrypt. Returns null if
+     * either side's key material is missing, or the blob is not a
+     * valid sealed message.
+     */
+    private suspend fun decryptForContact(contact: ContactEntity, sealed: String): String? {
+        if (sealed.isEmpty()) return null
+        val self = userSettingsDao.get() ?: return null
+        val peerHex = contact.peerUserKeyHex ?: return null
+        return withContext(Dispatchers.Default) {
+            runCatching {
+                val selfKey = hexToBytes(self.userKeyHex)
+                val peerKey = hexToBytes(peerHex)
+                val mkey = CryptoUtils.deriveMkey(selfKey, peerKey)
+                SealedMessage.tryOpen(mkey, sealed)
+            }.getOrNull()
+        }
+    }
+
+    private fun hexToBytes(hex: String): ByteArray {
+        require(hex.length % 2 == 0) { "hex: odd length" }
+        val out = ByteArray(hex.length / 2)
+        for (i in out.indices) {
+            val hi = Character.digit(hex[i * 2], 16)
+            val lo = Character.digit(hex[i * 2 + 1], 16)
+            out[i] = ((hi shl 4) or lo).toByte()
+        }
+        return out
+    }
+
     fun sendStegoMessage(toUserId: String, secretMessage: String, fromUserId: String, fromUsername: String) {
         viewModelScope.launch {
+            // Gate: stego embedding also needs a sealed payload. UI already
+            // disables send when canSend is false (which requires e2eeReady).
+            // Snackbar as defensive fallback.
+            val activeMkey = _mkey.value
+            if (activeMkey == null || _activeContactId.value != toUserId) {
+                _snackbar.emit("端到端加密未配置,无法发送隐写消息")
+                return@launch
+            }
+
             _stegoLoading.value = true
             try {
-                val key = getStegoKey(true)
+                val sealed = withContext(Dispatchers.Default) {
+                    SealedMessage.seal(activeMkey, secretMessage)
+                }
+                val key = getStegoKey()
                 val stegoApi = ApiClient.stegoApi
-                val res = stegoApi.embed(secretMessage, key)
+                // Feed the sealed ASCII base64url string to /embed as the
+                // `message` field. Server embeds the ciphertext bytes and
+                // never sees plaintext.
+                val res = stegoApi.embed(sealed, key)
                 if (!res.isSuccessful) {
                     _stegoLoading.value = false
                     return@launch
@@ -260,11 +410,13 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
                 val msgId = UUID.randomUUID().toString()
                 val now = System.currentTimeMillis() / 1000
+                // Local DB: store PLAINTEXT for the sender's own history view.
+                // Sealed blob only lives inside the stego image on the wire.
                 val entity = MessageEntity(
                     id = msgId,
                     contactId = toUserId,
                     direction = "sent",
-                    content = "",
+                    content = secretMessage,
                     contentType = "stego",
                     stegoImage = stegoImage,
                     status = "sending",
@@ -286,17 +438,30 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                         "burn_after" to 0
                     )
                 ))
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                _snackbar.emit("加密失败: ${e.message ?: "unknown"}")
             } finally {
                 _stegoLoading.value = false
             }
         }
     }
 
-    suspend fun extractMessage(stegoImageBase64: String, isOutgoing: Boolean): String {
+    /**
+     * Extract a stego image's payload and decrypt it with the active chat's
+     * mkey. The extracted bytes are the sealed base64url ciphertext we
+     * embedded on send; tryOpen recovers the original plaintext. Returns a
+     * human-readable string for the bubble UI (plaintext on success,
+     * explanation on failure).
+     *
+     * Uses the active chat's mkey (which is tied to the currently-open
+     * contact). For history viewing from other contacts this would need
+     * a per-contact derivation — but the current UI only extracts inside
+     * the active ChatScreen so the active mkey is always correct.
+     */
+    suspend fun extractMessage(stegoImageBase64: String, @Suppress("UNUSED_PARAMETER") isOutgoing: Boolean): String {
         return withContext(Dispatchers.IO) {
             try {
-                val key = getStegoKey(isOutgoing)
+                val key = getStegoKey()
                 val base64Clean = if (stegoImageBase64.startsWith("data:")) {
                     stegoImageBase64.substringAfter(",")
                 } else {
@@ -314,11 +479,22 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 val res = stegoApi.extract(part, keyBody)
                 tempFile.delete()
 
-                if (res.isSuccessful) {
-                    res.body()?.secret_message ?: "(空)"
-                } else {
-                    "提取失败: ${res.code()}"
+                if (!res.isSuccessful) {
+                    return@withContext "提取失败: ${res.code()}"
                 }
+                val extracted = res.body()?.secret_message ?: ""
+                if (extracted.isEmpty()) return@withContext "(空)"
+
+                // Unseal the extracted ciphertext. Use the active mkey;
+                // active chat is always the one whose stego we're viewing.
+                val activeMkey = _mkey.value
+                if (activeMkey == null) {
+                    return@withContext "[无法解密,未配置端到端加密]"
+                }
+                val opened = withContext(Dispatchers.Default) {
+                    SealedMessage.tryOpen(activeMkey, extracted)
+                }
+                opened ?: "[无法解密,双方助记词可能不一致]"
             } catch (e: Exception) {
                 "提取失败: ${e.message}"
             }

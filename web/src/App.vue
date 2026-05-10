@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import { useChatStore } from './stores/chat'
 import { useContactsStore } from './stores/contacts'
+import { useSettingsStore } from './stores/settings'
 import { wsClient } from './api/websocket'
 import SideNav from './components/SideNav.vue'
 
@@ -12,6 +13,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const chatStore = useChatStore()
 const contactsStore = useContactsStore()
+const settingsStore = useSettingsStore()
 
 const showNav = computed(() => {
   const guestRoutes = ['/login', '/register']
@@ -34,6 +36,8 @@ function onAuthFailed() {
 onMounted(() => {
   window.addEventListener('ws-kicked', onKicked)
   window.addEventListener('ws-auth-failed', onAuthFailed)
+  // 启动时恢复本地 E2EE 状态(助记词/派生 key)
+  settingsStore.hydrate()
   // 启动时若有本地 token,向 server 验证;失败(401/403)则清除并跳登录
   if (auth.token) {
     auth.verify().then((ok) => {

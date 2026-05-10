@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { Message } from '../db'
 import {
   getMessagesByContact,
@@ -11,6 +11,15 @@ import { wsClient } from '../api/websocket'
 import { getMyCode, getUserCode } from '../api/invite'
 import { useAuthStore } from './auth'
 import { useContactsStore } from './contacts'
+import { useSettingsStore } from './settings'
+import {
+  hexToBytes,
+  bytesToHex,
+  xorBytes,
+  deriveMkey,
+  sealMessage,
+  tryOpenMessage,
+} from '../crypto/e2ee'
 
 export const useChatStore = defineStore('chat', () => {
   const messages = ref<Map<string, Message[]>>(new Map())
@@ -18,6 +27,12 @@ export const useChatStore = defineStore('chat', () => {
   const myInviteCode = ref('')
   const peerInviteCode = ref('')
   const inviteCodesLoaded = ref(false)
+
+  // Active chat session mkey cache. Not persisted. Invalidated whenever
+  // activeContactId / self userKey / peer userKey change.
+  const activeContactId = ref<string | null>(null)
+  const currentMkey = ref<Uint8Array | null>(null)
+  const hasE2EE = computed(() => currentMkey.value !== null)
 
   async function loadInviteCodes(peerUserId: string) {
     try {
@@ -34,11 +49,50 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  function getStegoKey(isOutgoing: boolean): string {
-    if (isOutgoing) {
-      return myInviteCode.value + peerInviteCode.value
+  /**
+   * 隐写模型 seed 密钥 = 双方邀请码的按字节 XOR,然后转 hex 字符串。
+   *
+   * XOR 天然对称,A↔B 双方算出的 seed 完全相同,因此不再需要区分方向;
+   * 调用方可以放心地在发送或接收(提取)路径上直接调用。邀请码长度固定
+   * (INVITE_CODE_LENGTH=8),不涉及 padding。
+   */
+  function getStegoKey(): string {
+    const a = new TextEncoder().encode(myInviteCode.value)
+    const b = new TextEncoder().encode(peerInviteCode.value)
+    return bytesToHex(xorBytes(a, b))
+  }
+
+  /**
+   * Derive (or invalidate) the AES-GCM mkey for the current active chat.
+   * Lazy-recomputed whenever self userKey or peer userKey changes. Result
+   * lives only in memory (never in IndexedDB).
+   */
+  async function refreshMkey() {
+    const contactId = activeContactId.value
+    if (!contactId) {
+      currentMkey.value = null
+      return
     }
-    return peerInviteCode.value + myInviteCode.value
+    const settings = useSettingsStore()
+    const contactsStore = useContactsStore()
+    const peerHex = contactsStore.getContactById(contactId)?.peerUserKeyHex
+    if (!settings.userKeyHex || !peerHex) {
+      currentMkey.value = null
+      return
+    }
+    try {
+      const selfKey = hexToBytes(settings.userKeyHex)
+      const peerKey = hexToBytes(peerHex)
+      currentMkey.value = await deriveMkey(selfKey, peerKey)
+    } catch (e) {
+      console.error('deriveMkey failed:', e)
+      currentMkey.value = null
+    }
+  }
+
+  async function setActiveContact(contactId: string | null) {
+    activeContactId.value = contactId
+    await refreshMkey()
   }
 
   async function loadMessages(contactId: string) {
@@ -60,9 +114,27 @@ export const useChatStore = defineStore('chat', () => {
     const auth = useAuthStore()
     if (!auth.user) return
 
+    // Gate: refuse to send when E2EE is not fully configured. Callers
+    // should render a banner that matches this state so the user is not
+    // surprised; throwing here is a defensive fallback.
+    if (!currentMkey.value || activeContactId.value !== toUserId) {
+      throw new Error('E2EE_NOT_CONFIGURED')
+    }
+
+    const mkey = currentMkey.value
+    let sealed: string
+    try {
+      sealed = await sealMessage(mkey, content)
+    } catch (e) {
+      console.error('sealMessage failed:', e)
+      throw new Error('E2EE_SEAL_FAILED')
+    }
+
     const id = crypto.randomUUID()
     const now = new Date().toISOString()
 
+    // Local DB: store the PLAINTEXT so user's own history reads correctly.
+    // Sealed blob goes only on the wire.
     const message: Message = {
       id,
       contact_id: toUserId,
@@ -87,12 +159,46 @@ export const useChatStore = defineStore('chat', () => {
         from_user_id: auth.user.user_id,
         from_username: auth.user.username,
         to_user_id: toUserId,
-        content,
+        content: sealed,
         content_type: 'text',
         burn_after: 0,
         is_first_contact: false,
       },
     })
+  }
+
+  /**
+   * Seal plaintext with the current active chat's mkey. Returns sealed
+   * base64url ASCII string suitable for feeding to `/stego/embed` as the
+   * `message` field. Throws when E2EE is not configured for the active
+   * chat so the caller can surface a banner.
+   */
+  async function sealStegoPayload(plaintext: string): Promise<string> {
+    if (!currentMkey.value) throw new Error('E2EE_NOT_CONFIGURED')
+    return sealMessage(currentMkey.value, plaintext)
+  }
+
+  /**
+   * Open a sealed payload extracted from a stego image. Uses the given
+   * contactId to derive an mkey (may differ from the active chat — when
+   * viewing history from another contact). Returns null if either side's
+   * key is missing, or the blob is not a valid sealed message.
+   *
+   * Never logs sealed content or derived key material.
+   */
+  async function openStegoPayload(contactId: string, sealed: string): Promise<string | null> {
+    const settings = useSettingsStore()
+    const contactsStore = useContactsStore()
+    const peerHex = contactsStore.getContactById(contactId)?.peerUserKeyHex
+    if (!settings.userKeyHex || !peerHex) return null
+    try {
+      const selfKey = hexToBytes(settings.userKeyHex)
+      const peerKey = hexToBytes(peerHex)
+      const mkey = await deriveMkey(selfKey, peerKey)
+      return await tryOpenMessage(mkey, sealed)
+    } catch {
+      return null
+    }
   }
 
   async function sendStegoMessage(toUserId: string, stegoImage: string) {
@@ -178,12 +284,36 @@ export const useChatStore = defineStore('chat', () => {
       return
     }
 
+    // For text messages, attempt decryption when E2EE is configured for that
+    // contact. Fall back to raw content (legacy plaintext) on failure — this
+    // keeps backward compat with history sent before key configuration.
+    const contentType: string = payload.content_type || 'text'
+    let storedContent: string = payload.content ?? ''
+    if (contentType === 'text') {
+      const settings = useSettingsStore()
+      const peerHex = existingContact.peerUserKeyHex
+      if (settings.userKeyHex && peerHex && typeof payload.content === 'string') {
+        try {
+          const selfKey = hexToBytes(settings.userKeyHex)
+          const peerKey = hexToBytes(peerHex)
+          const mkey = await deriveMkey(selfKey, peerKey)
+          const opened = await tryOpenMessage(mkey, payload.content)
+          if (opened !== null) {
+            storedContent = opened
+          }
+          // null → treat as legacy plaintext; keep raw content as-is
+        } catch (e) {
+          console.warn('decrypt incoming failed:', e)
+        }
+      }
+    }
+
     const message: Message = {
       id: msg.id,
       contact_id: payload.from_user_id,
       direction: 'received',
-      content: payload.content,
-      content_type: payload.content_type || 'text',
+      content: storedContent,
+      content_type: contentType as 'text' | 'stego',
       stego_image: payload.stego_image,
       status: 'delivered',
       burn_after: payload.burn_after || 0,
@@ -296,13 +426,20 @@ export const useChatStore = defineStore('chat', () => {
     myInviteCode,
     peerInviteCode,
     inviteCodesLoaded,
+    activeContactId,
+    currentMkey,
+    hasE2EE,
     loadMessages,
     getMessages,
     getLastMessage,
     loadInviteCodes,
     getStegoKey,
+    setActiveContact,
+    refreshMkey,
     sendTextMessage,
     sendStegoMessage,
+    sealStegoPayload,
+    openStegoPayload,
     sendReadReceipt,
     setupWsHandlers,
   }

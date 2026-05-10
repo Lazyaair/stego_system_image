@@ -1,0 +1,17 @@
+{
+  "phrase_A": "alice-phrase-2026",
+  "phrase_B": "bob secret phrase",
+  "invite_A": "AB12CD34",
+  "invite_B": "EF56GH78",
+  "plaintext_utf8": "Hello, world!",
+  "fixed_nonce_hex": "000102030405060708090a0b",
+  "expected": {
+    "user_key_A_hex": "6f2d25674141a95becb04bb059cb25ddc7349666741bb32e6d7e02bcc82be9c8",
+    "user_key_B_hex": "870c11facdf451b625f32a3c09f537150ab3a2ef410a0ca35f96d444868281fe",
+    "fingerprint_A_hex": "8827d7891f312806",
+    "fingerprint_B_hex": "9b42dc49b1777555",
+    "mkey_hex": "89403525f2f5240d6497dac54cc02611891833ae53d5f09337b9c8884072d0df",
+    "seed_hex": "04040404040c040c",
+    "ciphertext_with_tag_hex": "656fdc27409c655f777c967b3a2c79be97a4af306b68555936969a5649"
+  }
+}

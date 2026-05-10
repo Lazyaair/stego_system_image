@@ -2,11 +2,14 @@
 import { ref } from 'vue'
 import type { Message } from '../db'
 import { stegoApi } from '../api/stego'
+import { useChatStore } from '../stores/chat'
 
 const props = defineProps<{
   message: Message
   stegoKey: string
 }>()
+
+const chatStore = useChatStore()
 
 const showMenu = ref(false)
 const menuX = ref(0)
@@ -41,6 +44,10 @@ function closeMenu() {
 async function extractSecret() {
   closeMenu()
   if (!props.message.stego_image || extracting.value) return
+  // Cache hit: if we already decrypted this bubble once, re-show without
+  // re-extracting. (Per-component `extractedText` ref survives across menu
+  // opens for the bubble's lifetime.)
+  if (extractedText.value !== null) return
   extracting.value = true
   try {
     const base64 = props.message.stego_image.startsWith('data:')
@@ -52,7 +59,19 @@ async function extractSecret() {
     const blob = new Blob([bytes], { type: 'image/png' })
     const file = new File([blob], 'stego.png', { type: 'image/png' })
     const res = await stegoApi.extract(file, props.stegoKey)
-    extractedText.value = res.secret_message || '(空)'
+    // Server returns the bytes we embedded — which since Chunk 5 is the
+    // sealed AES-GCM ciphertext (base64url ASCII). Try to unseal with the
+    // mkey derived from this conversation's phrases.
+    const extracted = res.secret_message || ''
+    if (!extracted) {
+      extractedText.value = '(空)'
+      return
+    }
+    const opened = await chatStore.openStegoPayload(
+      props.message.contact_id,
+      extracted,
+    )
+    extractedText.value = opened ?? '[无法解密,双方助记词可能不一致]'
   } catch (e: any) {
     extractedText.value = '提取失败: ' + (e.response?.data?.detail || e.message)
   } finally {

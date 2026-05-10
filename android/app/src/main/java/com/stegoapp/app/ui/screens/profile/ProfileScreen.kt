@@ -21,8 +21,13 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Hub
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.LockReset
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,6 +37,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -54,8 +60,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.stegoapp.app.api.ApiClient
 import com.stegoapp.app.ui.viewmodel.AuthViewModel
+import com.stegoapp.app.ui.viewmodel.ProfileViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,6 +71,7 @@ import kotlinx.coroutines.launch
 fun ProfileScreen(
     authViewModel: AuthViewModel,
     onLogout: () -> Unit,
+    profileViewModel: ProfileViewModel = viewModel(),
 ) {
     val username by authViewModel.username.collectAsState()
     val userId by authViewModel.userId.collectAsState()
@@ -70,8 +79,14 @@ fun ProfileScreen(
     var loading by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showPhraseResetDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboardManager.current
+
+    val selfPhrase by profileViewModel.selfPhrase.collectAsState()
+    val fingerprint by profileViewModel.fingerprintHex.collectAsState()
+    val e2eeConfigured by profileViewModel.isConfigured.collectAsState()
+    val e2eeSaving by profileViewModel.saving.collectAsState()
 
     LaunchedEffect(Unit) {
         try {
@@ -119,6 +134,15 @@ fun ProfileScreen(
                 onReset = { showResetDialog = true },
             )
             Spacer(modifier = Modifier.height(24.dp))
+            E2EEPhraseCard(
+                savedPhrase = selfPhrase,
+                fingerprintHex = fingerprint,
+                configured = e2eeConfigured,
+                saving = e2eeSaving,
+                onSave = { profileViewModel.saveSelfPhrase(it) },
+                onReset = { showPhraseResetDialog = true },
+            )
+            Spacer(modifier = Modifier.height(24.dp))
             SettingsList()
             Spacer(modifier = Modifier.height(24.dp))
             LogoutButton(onClick = { showLogoutDialog = true })
@@ -149,6 +173,25 @@ fun ProfileScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showResetDialog = false }) { Text("取消") }
+            },
+        )
+    }
+
+    if (showPhraseResetDialog) {
+        AlertDialog(
+            onDismissRequest = { showPhraseResetDialog = false },
+            title = { Text("重置加密助记词?") },
+            text = { Text("清除后,任何使用旧助记词加密的消息将无法解密。建议与对方同步更新。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPhraseResetDialog = false
+                    profileViewModel.clear()
+                }) {
+                    Text("重置", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPhraseResetDialog = false }) { Text("取消") }
             },
         )
     }
@@ -355,6 +398,143 @@ private fun SettingsRow(
         )
         trailing()
     }
+}
+
+@Composable
+private fun E2EEPhraseCard(
+    savedPhrase: String,
+    fingerprintHex: String,
+    configured: Boolean,
+    saving: Boolean,
+    onSave: (String) -> Unit,
+    onReset: () -> Unit,
+) {
+    var input by remember(savedPhrase) { mutableStateOf(savedPhrase) }
+
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Outlined.Lock,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "加密助记词",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    E2EEStatusChip(configured = configured)
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it },
+                    placeholder = { Text("与对方线下约定的助记词") },
+                    singleLine = true,
+                    enabled = !saving,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (configured && fingerprintHex.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "指纹",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = formatFingerprint(fingerprintHex),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Button(
+                        onClick = { onSave(input) },
+                        enabled = !saving && input.isNotBlank(),
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        if (saving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("派生中...")
+                        } else {
+                            Text("保存")
+                        }
+                    }
+                    if (configured) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        TextButton(onClick = onReset) {
+                            Icon(
+                                imageVector = Icons.Outlined.LockReset,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("重置")
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "助记词仅保存在本机,用于与联系人派生端到端会话密钥",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun E2EEStatusChip(configured: Boolean) {
+    val label = if (configured) "已配置" else "未配置"
+    val container = if (configured) {
+        MaterialTheme.colorScheme.tertiaryContainer
+    } else {
+        MaterialTheme.colorScheme.errorContainer
+    }
+    val content = if (configured) {
+        MaterialTheme.colorScheme.onTertiaryContainer
+    } else {
+        MaterialTheme.colorScheme.onErrorContainer
+    }
+    Surface(
+        color = container,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = content,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        )
+    }
+}
+
+private fun formatFingerprint(hex: String): String {
+    val clean = hex.lowercase().filter { it.isLetterOrDigit() }
+    val bytes = clean.chunked(2).take(8)
+    return bytes.joinToString(":")
 }
 
 @Composable

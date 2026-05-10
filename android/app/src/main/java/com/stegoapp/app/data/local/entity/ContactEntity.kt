@@ -9,5 +9,8 @@ data class ContactEntity(
     val username: String,
     val nickname: String = "",
     val status: String = "accepted",
-    val addedAt: String = ""
+    val addedAt: String = "",
+    val peerPhrase: String? = null,
+    val peerUserKeyHex: String? = null,
+    val peerFingerprintHex: String? = null,
 )

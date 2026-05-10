@@ -78,7 +78,11 @@ fun NavGraph(
                 chatViewModel = chatViewModel,
                 currentUserId = currentUserId,
                 currentUsername = currentUsername,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onNavigateProfile = { navController.navigate(Screen.Profile.route) },
+                onNavigateContactDetail = { userId ->
+                    navController.navigate(Screen.ContactDetail.createRoute(userId))
+                },
             )
         }
         composable(Screen.Contacts.route) {
