@@ -459,7 +459,14 @@ private fun StegoInfoBanner(
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                val fullKey = myCode + peerCode
+                val fullKey = remember(myCode, peerCode) {
+                    if (myCode.isEmpty() || myCode.length != peerCode.length) "" else {
+                        val a = myCode.toByteArray(Charsets.UTF_8)
+                        val b = peerCode.toByteArray(Charsets.UTF_8)
+                        com.stegoapp.app.crypto.CryptoUtils.xorBytes(a, b)
+                            .joinToString("") { "%02x".format(it) }
+                    }
+                }
                 val keyText = if (keyVisible) fullKey else "••••••••••••••••"
                 Text(
                     text = keyText,
@@ -544,7 +551,7 @@ fun MessageBubble(message: MessageEntity, chatViewModel: ChatViewModel) {
                                 bitmap = stegoBitmap.asImageBitmap(),
                                 contentDescription = "隐写图像",
                                 modifier = Modifier
-                                    .fillMaxWidth()
+                                    .size(256.dp)
                                     .combinedClickable(
                                         onClick = {},
                                         onLongClick = { showMenu = true },
@@ -603,8 +610,7 @@ fun MessageBubble(message: MessageEntity, chatViewModel: ChatViewModel) {
                         }
                     }
 
-                    if (message.content.isNotBlank()) {
-                        if (stegoImageData != null) Spacer(modifier = Modifier.height(6.dp))
+                    if (message.contentType != "stego" && message.content.isNotBlank()) {
                         Text(
                             text = message.content,
                             color = textColor,
@@ -718,5 +724,373 @@ private suspend fun saveImageToGallery(context: android.content.Context, base64:
             }
         }
     }
+}
+
+// =========================================================================
+//  @Preview 区 —— 用于 Android Studio Design 面板快速展示
+// =========================================================================
+
+@androidx.compose.ui.tooling.preview.Preview(
+    name = "ChatScreen 完整对话",
+    showBackground = true,
+    widthDp = 400,
+    heightDp = 820,
+)
+@Composable
+private fun Preview_ChatScreen_FullConversation() {
+    com.stegoapp.app.ui.theme.StegoAppTheme {
+        Scaffold(
+            topBar = {
+                @OptIn(ExperimentalMaterial3Api::class)
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "张三",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {}) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                    ),
+                )
+            },
+            bottomBar = {
+                ChatInputBar(
+                    inputText = "",
+                    onInputChange = {},
+                    stegoMode = false,
+                    stegoEnabled = true,
+                    stegoLoading = false,
+                    canSend = false,
+                    inputEnabled = true,
+                    inputByteLength = 0,
+                    maxCapacity = 520,
+                    overCapacity = false,
+                    myCode = "AB12CD34",
+                    peerCode = "EF56GH78",
+                    keyVisible = false,
+                    onToggleKeyVisible = {},
+                    onToggleStegoMode = {},
+                    onSend = {},
+                )
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+        ) { padding ->
+            Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+                E2EEBanner(
+                    selfConfigured = true,
+                    peerConfigured = true,
+                    onConfigureSelf = {},
+                    onConfigurePeer = {},
+                )
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
+                ) {
+                    items(sampleMessages()) { msg ->
+                        PreviewMessageBubble(msg)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(name = "Banner — 自己未配置", showBackground = true, widthDp = 400)
+@Composable
+private fun Preview_Banner_SelfMissing() {
+    com.stegoapp.app.ui.theme.StegoAppTheme {
+        E2EEBanner(selfConfigured = false, peerConfigured = false, onConfigureSelf = {}, onConfigurePeer = {})
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(name = "Banner — 对方未配置", showBackground = true, widthDp = 400)
+@Composable
+private fun Preview_Banner_PeerMissing() {
+    com.stegoapp.app.ui.theme.StegoAppTheme {
+        E2EEBanner(selfConfigured = true, peerConfigured = false, onConfigureSelf = {}, onConfigurePeer = {})
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(name = "Banner — 已启用", showBackground = true, widthDp = 400)
+@Composable
+private fun Preview_Banner_Ready() {
+    com.stegoapp.app.ui.theme.StegoAppTheme {
+        E2EEBanner(selfConfigured = true, peerConfigured = true, onConfigureSelf = {}, onConfigurePeer = {})
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(name = "输入栏 — 普通模式", showBackground = true, widthDp = 400)
+@Composable
+private fun Preview_InputBar_Normal() {
+    com.stegoapp.app.ui.theme.StegoAppTheme {
+        ChatInputBar(
+            inputText = "你好",
+            onInputChange = {},
+            stegoMode = false,
+            stegoEnabled = true,
+            stegoLoading = false,
+            canSend = true,
+            inputEnabled = true,
+            inputByteLength = 6,
+            maxCapacity = 520,
+            overCapacity = false,
+            myCode = "AB12CD34",
+            peerCode = "EF56GH78",
+            keyVisible = false,
+            onToggleKeyVisible = {},
+            onToggleStegoMode = {},
+            onSend = {},
+        )
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(name = "输入栏 — 隐写模式", showBackground = true, widthDp = 400)
+@Composable
+private fun Preview_InputBar_StegoMode() {
+    com.stegoapp.app.ui.theme.StegoAppTheme {
+        ChatInputBar(
+            inputText = "这是一条秘密消息",
+            onInputChange = {},
+            stegoMode = true,
+            stegoEnabled = true,
+            stegoLoading = false,
+            canSend = true,
+            inputEnabled = true,
+            inputByteLength = 24,
+            maxCapacity = 520,
+            overCapacity = false,
+            myCode = "AB12CD34",
+            peerCode = "EF56GH78",
+            keyVisible = true,
+            onToggleKeyVisible = {},
+            onToggleStegoMode = {},
+            onSend = {},
+        )
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(name = "输入栏 — 未配置加密", showBackground = true, widthDp = 400)
+@Composable
+private fun Preview_InputBar_Disabled() {
+    com.stegoapp.app.ui.theme.StegoAppTheme {
+        ChatInputBar(
+            inputText = "",
+            onInputChange = {},
+            stegoMode = false,
+            stegoEnabled = false,
+            stegoLoading = false,
+            canSend = false,
+            inputEnabled = false,
+            inputByteLength = 0,
+            maxCapacity = 0,
+            overCapacity = false,
+            myCode = "",
+            peerCode = "",
+            keyVisible = false,
+            onToggleKeyVisible = {},
+            onToggleStegoMode = {},
+            onSend = {},
+        )
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(name = "气泡 — 已发送文本", showBackground = true, widthDp = 400)
+@Composable
+private fun Preview_Bubble_SentText() {
+    com.stegoapp.app.ui.theme.StegoAppTheme {
+        PreviewMessageBubble(
+            MessageEntity(
+                id = "1",
+                contactId = "c",
+                direction = "sent",
+                content = "你好,这是我发的一条普通消息",
+                contentType = "text",
+                status = "read",
+                createdAt = (System.currentTimeMillis() / 1000).toString(),
+            ),
+        )
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(name = "气泡 — 已接收文本", showBackground = true, widthDp = 400)
+@Composable
+private fun Preview_Bubble_ReceivedText() {
+    com.stegoapp.app.ui.theme.StegoAppTheme {
+        PreviewMessageBubble(
+            MessageEntity(
+                id = "2",
+                contactId = "c",
+                direction = "received",
+                content = "收到!晚点联系",
+                contentType = "text",
+                status = "delivered",
+                createdAt = (System.currentTimeMillis() / 1000).toString(),
+            ),
+        )
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(name = "气泡 — 隐写(占位)", showBackground = true, widthDp = 400)
+@Composable
+private fun Preview_Bubble_Stego() {
+    com.stegoapp.app.ui.theme.StegoAppTheme {
+        PreviewMessageBubble(
+            MessageEntity(
+                id = "3",
+                contactId = "c",
+                direction = "received",
+                content = "",
+                contentType = "stego",
+                stegoImage = null, // Preview 无法解码真实图片,走占位分支
+                status = "delivered",
+                createdAt = (System.currentTimeMillis() / 1000).toString(),
+            ),
+            extractedText = "这是解密出的秘密",
+        )
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(name = "气泡 — 已撤回", showBackground = true, widthDp = 400)
+@Composable
+private fun Preview_Bubble_Revoked() {
+    com.stegoapp.app.ui.theme.StegoAppTheme {
+        PreviewMessageBubble(
+            MessageEntity(
+                id = "4",
+                contactId = "c",
+                direction = "sent",
+                content = "原内容",
+                contentType = "text",
+                status = "read",
+                revoked = true,
+                createdAt = (System.currentTimeMillis() / 1000).toString(),
+            ),
+        )
+    }
+}
+
+/**
+ * 仅供 @Preview 使用的纯 UI 气泡,与 MessageBubble 视觉保持一致但不依赖 ChatViewModel。
+ * 如果需要模拟"已提取"的展示,传入 [extractedText]。
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PreviewMessageBubble(
+    message: MessageEntity,
+    extractedText: String? = null,
+) {
+    val isSent = message.direction == "sent"
+    val bubbleColor = if (isSent) MaterialTheme.colorScheme.primaryContainer
+        else MaterialTheme.colorScheme.surfaceContainerHigh
+    val textColor = if (isSent) MaterialTheme.colorScheme.onPrimaryContainer
+        else MaterialTheme.colorScheme.onSurface
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp),
+        horizontalArrangement = if (isSent) Arrangement.End else Arrangement.Start,
+    ) {
+        Surface(shape = bubbleShape(isSent), color = bubbleColor) {
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+                    .widthIn(max = 280.dp),
+            ) {
+                if (message.revoked) {
+                    Text(
+                        text = "消息已撤回",
+                        color = textColor.copy(alpha = 0.7f),
+                        fontStyle = FontStyle.Italic,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                } else {
+                    if (message.contentType == "stego") {
+                        Box(
+                            modifier = Modifier.size(256.dp),
+                        ) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                                modifier = Modifier.fillMaxSize(),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = "[隐写图像占位 256×256]",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            StegoBadge(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(6.dp),
+                            )
+                        }
+                        extractedText?.let { ext ->
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Surface(
+                                shape = MaterialTheme.shapes.small,
+                                color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                            ) {
+                                Text(
+                                    text = ext,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                        }
+                    }
+                    if (message.contentType != "stego" && message.content.isNotBlank()) {
+                        Text(
+                            text = message.content,
+                            color = textColor,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.align(Alignment.End),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = formatTimestamp(message.createdAt),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = textColor.copy(alpha = 0.65f),
+                        )
+                        if (isSent) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            StatusIndicator(status = message.status, tint = textColor.copy(alpha = 0.75f))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun sampleMessages(): List<MessageEntity> {
+    val now = System.currentTimeMillis() / 1000
+    return listOf(
+        MessageEntity("m1", "c", "received", "嗨!在忙吗?", "text", null, "delivered", 0, false, false, (now - 1800).toString()),
+        MessageEntity("m2", "c", "sent", "刚开完会,什么事?", "text", null, "read", 0, false, false, (now - 1700).toString()),
+        MessageEntity("m3", "c", "received", "想跟你同步下今天的测试进展 👀", "text", null, "delivered", 0, false, false, (now - 1500).toString()),
+        MessageEntity("m4", "c", "sent", "好,我刚把端到端加密推到 main,你那边拉下来试试", "text", null, "read", 0, false, false, (now - 1400).toString()),
+        MessageEntity("m5", "c", "received", "", "stego", null, "delivered", 0, false, false, (now - 900).toString()),
+        MessageEntity("m6", "c", "sent", "收到,看了下流程都对", "text", null, "delivered", 0, false, false, (now - 300).toString()),
+        MessageEntity("m7", "c", "sent", "原内容被撤回", "text", null, "read", 0, false, true, (now - 120).toString()),
+        MessageEntity("m8", "c", "sent", "发送中...", "text", null, "sending", 0, false, false, now.toString()),
+    )
 }
 
