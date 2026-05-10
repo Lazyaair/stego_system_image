@@ -10,10 +10,17 @@ import {
   addToBlacklist as dbAddToBlacklist,
   removeFromBlacklist as dbRemoveFromBlacklist,
   isBlacklisted,
+  saveContactPeerE2EE,
 } from '../db'
 import { lookupCode } from '../api/invite'
 import { wsClient } from '../api/websocket'
 import { useAuthStore } from './auth'
+import {
+  bytesToHex,
+  hexToBytes,
+  deriveUserKey,
+  fingerprint,
+} from '../crypto/e2ee'
 
 export const useContactsStore = defineStore('contacts', () => {
   const contacts = ref<Contact[]>([])
@@ -98,6 +105,33 @@ export const useContactsStore = defineStore('contacts', () => {
     return isBlacklisted(userId)
   }
 
+  /**
+   * 记录某个联系人对方的加密助记词,并派生/缓存其 user_key 和指纹。
+   * 不影响原 Contact 字段。
+   */
+  async function setPeerPhrase(contactId: string, phrase: string) {
+    const trimmed = phrase.trim()
+    if (!trimmed) throw new Error('phrase: empty')
+    const uk = await deriveUserKey(trimmed)
+    const fp = await fingerprint(uk)
+    const ukHex = bytesToHex(uk)
+    const fpHex = bytesToHex(fp)
+    await saveContactPeerE2EE(contactId, trimmed, ukHex, fpHex)
+    // 重新载入确保 UI 响应式
+    await loadContacts()
+  }
+
+  /** 从缓存 hex 还原 peer user_key 字节;未配置时返回 null。 */
+  function getPeerUserKey(contactId: string): Uint8Array | null {
+    const c = contacts.value.find((x) => x.user_id === contactId)
+    if (!c || !c.peerUserKeyHex) return null
+    return hexToBytes(c.peerUserKeyHex)
+  }
+
+  function getContactById(contactId: string): Contact | undefined {
+    return contacts.value.find((x) => x.user_id === contactId)
+  }
+
   return {
     contacts,
     blacklist,
@@ -108,5 +142,8 @@ export const useContactsStore = defineStore('contacts', () => {
     blockUser,
     unblockUser,
     isUserBlacklisted,
+    setPeerPhrase,
+    getPeerUserKey,
+    getContactById,
   }
 })
