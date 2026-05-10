@@ -1,7 +1,7 @@
 import { openDB, type IDBPDatabase } from 'idb'
 
 const DB_NAME = 'stego-app'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 export interface Contact {
   user_id: string
@@ -9,6 +9,12 @@ export interface Contact {
   nickname: string
   status: 'pending' | 'accepted'
   added_at: string
+  /** 对方提供的加密助记词(本地明文保存,仅供派生 peer user_key 使用) */
+  peerPhrase?: string
+  /** 由 peerPhrase 派生的 peer user_key,hex 编码(256 bit) */
+  peerUserKeyHex?: string
+  /** peer user_key 的 SHA-256 前 8 字节指纹,hex 编码 */
+  peerFingerprintHex?: string
 }
 
 export interface Message {
@@ -31,12 +37,19 @@ export interface BlacklistEntry {
   blocked_at: string
 }
 
+export interface SelfE2EERecord {
+  key: 'e2ee_self'
+  phrase: string
+  userKeyHex: string
+  fingerprintHex: string
+}
+
 let dbPromise: Promise<IDBPDatabase> | null = null
 
 function getDB() {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
+      upgrade(db, _oldVersion, _newVersion, _transaction) {
         if (!db.objectStoreNames.contains('contacts')) {
           db.createObjectStore('contacts', { keyPath: 'user_id' })
         }
@@ -51,6 +64,8 @@ function getDB() {
         if (!db.objectStoreNames.contains('settings')) {
           db.createObjectStore('settings', { keyPath: 'key' })
         }
+        // v2: 仅新增 Contact 上的可选字段(peerPhrase / peerUserKeyHex / peerFingerprintHex)
+        // 和 settings 里的 e2ee_self 记录,不需要修改 store 结构。
       },
     })
   }
@@ -76,6 +91,22 @@ export async function saveContact(contact: Contact): Promise<void> {
 export async function deleteContact(userId: string): Promise<void> {
   const db = await getDB()
   await db.delete('contacts', userId)
+}
+
+/** 写入/更新联系人的 peer E2EE 字段,保留其它字段不变。 */
+export async function saveContactPeerE2EE(
+  userId: string,
+  phrase: string,
+  userKeyHex: string,
+  fingerprintHex: string,
+): Promise<void> {
+  const db = await getDB()
+  const existing = await db.get('contacts', userId)
+  if (!existing) throw new Error(`contact not found: ${userId}`)
+  existing.peerPhrase = phrase
+  existing.peerUserKeyHex = userKeyHex
+  existing.peerFingerprintHex = fingerprintHex
+  await db.put('contacts', existing)
 }
 
 // Messages
@@ -129,6 +160,44 @@ export async function isBlacklisted(userId: string): Promise<boolean> {
   const db = await getDB()
   const entry = await db.get('blacklist', userId)
   return !!entry
+}
+
+// Self E2EE (settings)
+const SELF_E2EE_KEY = 'e2ee_self'
+
+export async function saveSelfE2EE(
+  phrase: string,
+  userKeyHex: string,
+  fingerprintHex: string,
+): Promise<void> {
+  const db = await getDB()
+  const rec: SelfE2EERecord = {
+    key: SELF_E2EE_KEY,
+    phrase,
+    userKeyHex,
+    fingerprintHex,
+  }
+  await db.put('settings', rec)
+}
+
+export async function loadSelfE2EE(): Promise<{
+  phrase: string
+  userKeyHex: string
+  fingerprintHex: string
+} | null> {
+  const db = await getDB()
+  const rec = (await db.get('settings', SELF_E2EE_KEY)) as SelfE2EERecord | undefined
+  if (!rec) return null
+  return {
+    phrase: rec.phrase,
+    userKeyHex: rec.userKeyHex,
+    fingerprintHex: rec.fingerprintHex,
+  }
+}
+
+export async function clearSelfE2EE(): Promise<void> {
+  const db = await getDB()
+  await db.delete('settings', SELF_E2EE_KEY)
 }
 
 // Clear all data (for logout)
