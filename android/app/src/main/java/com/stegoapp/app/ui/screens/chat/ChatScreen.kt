@@ -44,8 +44,11 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -81,6 +84,8 @@ fun ChatScreen(
     currentUserId: String,
     currentUsername: String,
     onBack: () -> Unit,
+    onNavigateProfile: () -> Unit = {},
+    onNavigateContactDetail: (String) -> Unit = {},
 ) {
     val messages by chatViewModel.getMessages(contactId).collectAsState(initial = emptyList())
     var inputText by remember { mutableStateOf("") }
@@ -92,10 +97,26 @@ fun ChatScreen(
     val stegoLoading by chatViewModel.stegoLoading.collectAsState()
     val myCode by chatViewModel.myInviteCode.collectAsState()
     val peerCode by chatViewModel.peerInviteCode.collectAsState()
+    val selfConfigured by chatViewModel.selfPhraseConfigured.collectAsState()
+    val peerConfigured by chatViewModel.peerPhraseConfigured.collectAsState()
+    val e2eeReady by chatViewModel.isE2EEConfigured.collectAsState()
 
     var keyVisible by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(contactId) { chatViewModel.loadInviteCodes(contactId) }
+    LaunchedEffect(contactId) {
+        chatViewModel.setActiveContact(contactId)
+        chatViewModel.loadInviteCodes(contactId)
+    }
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose { chatViewModel.setActiveContact(null) }
+    }
+
+    LaunchedEffect(Unit) {
+        chatViewModel.snackbar.collect { msg ->
+            snackbarHostState.showSnackbar(msg)
+        }
+    }
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
@@ -103,7 +124,7 @@ fun ChatScreen(
 
     val inputByteLength = remember(inputText) { inputText.toByteArray(Charsets.UTF_8).size }
     val overCapacity = stegoMode && maxCapacity > 0 && inputByteLength > maxCapacity
-    val canSend = inputText.isNotBlank() && !stegoLoading && !(stegoMode && overCapacity)
+    val canSend = inputText.isNotBlank() && !stegoLoading && !(stegoMode && overCapacity) && e2eeReady
 
     Scaffold(
         topBar = {
@@ -130,9 +151,10 @@ fun ChatScreen(
                 inputText = inputText,
                 onInputChange = { inputText = it },
                 stegoMode = stegoMode,
-                stegoEnabled = inviteCodesLoaded,
+                stegoEnabled = inviteCodesLoaded && e2eeReady,
                 stegoLoading = stegoLoading,
                 canSend = canSend,
+                inputEnabled = e2eeReady,
                 inputByteLength = inputByteLength,
                 maxCapacity = maxCapacity,
                 overCapacity = overCapacity,
@@ -161,33 +183,126 @@ fun ChatScreen(
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.surface,
     ) { padding ->
-        if (messages.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "还没有消息,说点什么吧",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            E2EEBanner(
+                selfConfigured = selfConfigured,
+                peerConfigured = peerConfigured,
+                onConfigureSelf = onNavigateProfile,
+                onConfigurePeer = { onNavigateContactDetail(contactId) },
+            )
+            if (messages.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "还没有消息,说点什么吧",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
+                ) {
+                    items(messages, key = { it.id }) { msg ->
+                        MessageBubble(message = msg, chatViewModel = chatViewModel)
+                    }
+                }
             }
-        } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
+        }
+    }
+}
+
+@Composable
+private fun E2EEBanner(
+    selfConfigured: Boolean,
+    peerConfigured: Boolean,
+    onConfigureSelf: () -> Unit,
+    onConfigurePeer: () -> Unit,
+) {
+    when {
+        !selfConfigured -> {
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer,
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                items(messages, key = { it.id }) { msg ->
-                    MessageBubble(message = msg, chatViewModel = chatViewModel)
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Lock,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "请先在「我的」页面配置助记词",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onConfigureSelf) { Text("去设置") }
+                }
+            }
+        }
+        !peerConfigured -> {
+            Surface(
+                color = MaterialTheme.colorScheme.tertiaryContainer,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Lock,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "请为该联系人配置对方的助记词",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onConfigurePeer) { Text("去配置") }
+                }
+            }
+        }
+        else -> {
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Lock,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(12.dp),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "端到端加密已启用",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
@@ -202,6 +317,7 @@ private fun ChatInputBar(
     stegoEnabled: Boolean,
     stegoLoading: Boolean,
     canSend: Boolean,
+    inputEnabled: Boolean,
     inputByteLength: Int,
     maxCapacity: Int,
     overCapacity: Boolean,
@@ -251,8 +367,13 @@ private fun ChatInputBar(
                 OutlinedTextField(
                     value = inputText,
                     onValueChange = onInputChange,
+                    enabled = inputEnabled,
                     placeholder = {
-                        Text(if (stegoMode) "输入秘密消息..." else "输入消息...")
+                        Text(
+                            if (!inputEnabled) "未配置加密,无法发送"
+                            else if (stegoMode) "输入秘密消息..."
+                            else "输入消息...",
+                        )
                     },
                     singleLine = true,
                     shape = MaterialTheme.shapes.large,
