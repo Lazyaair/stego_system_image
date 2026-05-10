@@ -46,9 +46,16 @@ onMounted(async () => {
   // Fetch max capacity once codes are loaded
   if (chatStore.inviteCodesLoaded) {
     try {
-      const key = chatStore.getStegoKey(true)
+      const key = chatStore.getStegoKey()
       const res = await stegoApi.getMaxCapacity(key)
-      stegoMaxCapacity.value = res.max_capacity
+      // Sealed payload bloats the plaintext by ~37%:
+      //   base64url(JSON{"v":1,"n":<b64u nonce 16>,"c":<b64u(ct+tag)>}) wraps
+      //   the AES-GCM ciphertext (plaintext_len + 16 bytes tag) twice through
+      //   base64. For short messages the overhead is even larger due to the
+      //   fixed JSON scaffolding. We conservatively show the user a
+      //   plaintext budget of 0.65 * server_max so the sealed blob we
+      //   actually send fits the real stego capacity.
+      stegoMaxCapacity.value = Math.floor(res.max_capacity * 0.65)
     } catch (e) {
       console.error('Failed to fetch max capacity:', e)
     }
@@ -75,18 +82,27 @@ function scrollToBottom() {
   }
 }
 
-function getStegoKeyForMessage(msg: any): string {
-  const isOutgoing = msg.direction === 'sent'
-  return chatStore.getStegoKey(isOutgoing)
+function getStegoKeyForMessage(_msg: any): string {
+  // Seed is XOR of invite codes — symmetric, so direction no longer matters.
+  return chatStore.getStegoKey()
 }
 
 async function handleSend(content: string, isStegoMode: boolean) {
   sendError.value = ''
   if (isStegoMode) {
+    // Same gating as text path: stego also requires mkey to seal payload.
+    if (!chatStore.hasE2EE) {
+      sendError.value = '端到端加密未配置,无法发送隐写消息。请先完成密钥设置。'
+      return
+    }
     stegoLoading.value = true
     try {
-      const key = chatStore.getStegoKey(true)
-      const res = await stegoApi.embed(content, key)
+      // Seal plaintext with mkey first; feed sealed ASCII string as the
+      // /embed `message` field. Server stores the sealed ciphertext inside
+      // the image bytes — it never sees plaintext.
+      const sealed = await chatStore.sealStegoPayload(content)
+      const key = chatStore.getStegoKey()
+      const res = await stegoApi.embed(sealed, key)
       if (!res.stego_image) {
         throw new Error(res.error || '隐写嵌入失败: 未返回载体图像')
       }
@@ -97,7 +113,11 @@ async function handleSend(content: string, isStegoMode: boolean) {
       }
       await chatStore.sendStegoMessage(contactId.value, base64)
     } catch (e: any) {
-      sendError.value = '隐写嵌入失败: ' + (e.response?.data?.detail || e.message)
+      if (e?.message === 'E2EE_NOT_CONFIGURED') {
+        sendError.value = '端到端加密未配置,无法发送隐写消息。请先完成密钥设置。'
+      } else {
+        sendError.value = '隐写嵌入失败: ' + (e.response?.data?.detail || e.message)
+      }
     } finally {
       stegoLoading.value = false
     }

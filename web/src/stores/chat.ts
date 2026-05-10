@@ -14,6 +14,8 @@ import { useContactsStore } from './contacts'
 import { useSettingsStore } from './settings'
 import {
   hexToBytes,
+  bytesToHex,
+  xorBytes,
   deriveMkey,
   sealMessage,
   tryOpenMessage,
@@ -47,11 +49,17 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  function getStegoKey(isOutgoing: boolean): string {
-    if (isOutgoing) {
-      return myInviteCode.value + peerInviteCode.value
-    }
-    return peerInviteCode.value + myInviteCode.value
+  /**
+   * 隐写模型 seed 密钥 = 双方邀请码的按字节 XOR,然后转 hex 字符串。
+   *
+   * XOR 天然对称,A↔B 双方算出的 seed 完全相同,因此不再需要区分方向;
+   * 调用方可以放心地在发送或接收(提取)路径上直接调用。邀请码长度固定
+   * (INVITE_CODE_LENGTH=8),不涉及 padding。
+   */
+  function getStegoKey(): string {
+    const a = new TextEncoder().encode(myInviteCode.value)
+    const b = new TextEncoder().encode(peerInviteCode.value)
+    return bytesToHex(xorBytes(a, b))
   }
 
   /**
@@ -157,6 +165,40 @@ export const useChatStore = defineStore('chat', () => {
         is_first_contact: false,
       },
     })
+  }
+
+  /**
+   * Seal plaintext with the current active chat's mkey. Returns sealed
+   * base64url ASCII string suitable for feeding to `/stego/embed` as the
+   * `message` field. Throws when E2EE is not configured for the active
+   * chat so the caller can surface a banner.
+   */
+  async function sealStegoPayload(plaintext: string): Promise<string> {
+    if (!currentMkey.value) throw new Error('E2EE_NOT_CONFIGURED')
+    return sealMessage(currentMkey.value, plaintext)
+  }
+
+  /**
+   * Open a sealed payload extracted from a stego image. Uses the given
+   * contactId to derive an mkey (may differ from the active chat — when
+   * viewing history from another contact). Returns null if either side's
+   * key is missing, or the blob is not a valid sealed message.
+   *
+   * Never logs sealed content or derived key material.
+   */
+  async function openStegoPayload(contactId: string, sealed: string): Promise<string | null> {
+    const settings = useSettingsStore()
+    const contactsStore = useContactsStore()
+    const peerHex = contactsStore.getContactById(contactId)?.peerUserKeyHex
+    if (!settings.userKeyHex || !peerHex) return null
+    try {
+      const selfKey = hexToBytes(settings.userKeyHex)
+      const peerKey = hexToBytes(peerHex)
+      const mkey = await deriveMkey(selfKey, peerKey)
+      return await tryOpenMessage(mkey, sealed)
+    } catch {
+      return null
+    }
   }
 
   async function sendStegoMessage(toUserId: string, stegoImage: string) {
@@ -396,6 +438,8 @@ export const useChatStore = defineStore('chat', () => {
     refreshMkey,
     sendTextMessage,
     sendStegoMessage,
+    sealStegoPayload,
+    openStegoPayload,
     sendReadReceipt,
     setupWsHandlers,
   }
