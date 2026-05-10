@@ -11,6 +11,11 @@ onMounted(() => contactsStore.loadContacts())
 function openChat(userId: string) {
   router.push(`/chat/${userId}`)
 }
+
+function openDetail(userId: string, event: Event) {
+  event.stopPropagation()
+  router.push(`/contacts/${userId}`)
+}
 </script>
 
 <template>
@@ -44,10 +49,36 @@ function openChat(userId: string) {
         <div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-bold flex-shrink-0">
           {{ (contact.nickname || contact.username)[0].toUpperCase() }}
         </div>
-        <div class="min-w-0">
-          <div class="font-semibold text-on-surface text-sm">{{ contact.nickname || contact.username }}</div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <span class="font-semibold text-on-surface text-sm">{{ contact.nickname || contact.username }}</span>
+            <span
+              v-if="!contact.peerUserKeyHex"
+              class="inline-flex items-center gap-0.5 text-[10px] font-bold text-on-error-container bg-error-container/40 px-1.5 py-0.5 rounded"
+              title="尚未配置对方加密助记词"
+            >
+              <span class="material-symbols-outlined text-[12px]">lock_open</span>
+              未加密
+            </span>
+            <span
+              v-else
+              class="inline-flex items-center gap-0.5 text-[10px] font-bold text-on-tertiary-container bg-tertiary-container/40 px-1.5 py-0.5 rounded"
+              title="已配置对方加密助记词"
+            >
+              <span class="material-symbols-outlined text-[12px]">lock</span>
+              已加密
+            </span>
+          </div>
           <div class="text-xs text-on-surface-variant">@{{ contact.username }}</div>
         </div>
+        <button
+          class="w-8 h-8 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-highest transition-colors flex items-center justify-center"
+          aria-label="详情"
+          title="详情 / 加密设置"
+          @click="openDetail(contact.user_id, $event)"
+        >
+          <span class="material-symbols-outlined text-lg">tune</span>
+        </button>
       </div>
     </div>
   </div>
