@@ -1,0 +1,29 @@
+graph LR
+    subgraph forward["前向加噪过程  q(xₜ | xₜ₋₁)"]
+        direction LR
+        X0["x₀<br/>原始图像"] -->|"+ β₁ 噪声"| X1["x₁"]
+        X1 -->|"+ β₂ 噪声"| X2["x₂"]
+        X2 -->|"⋯"| XT1["xₜ₋₁"]
+        XT1 -->|"+ βₜ 噪声"| XT["xₜ<br/>纯噪声"]
+    end
+
+    subgraph reverse["逆向去噪过程  pθ(xₜ₋₁ | xₜ)"]
+        direction LR
+        YT["xₜ<br/>纯噪声"] -->|"- 噪声<br/>网络 θ"| YT1["xₜ₋₁"]
+        YT1 -->|"- 噪声<br/>网络 θ"| YT2["xₜ₋₂"]
+        YT2 -->|"⋯"| YT3["x₁"]
+        YT3 -->|"- 噪声<br/>网络 θ"| Y0["x₀<br/>生成图像"]
+    end
+
+    style forward fill:#f0f4f8,stroke:#4a6fa5,stroke-width:2px
+    style reverse fill:#f0f4f8,stroke:#4a6fa5,stroke-width:2px
+    style X0 fill:#ffffff,stroke:#4a6fa5,stroke-width:1.5px
+    style X1 fill:#ffffff,stroke:#4a6fa5,stroke-width:1.5px
+    style X2 fill:#ffffff,stroke:#4a6fa5,stroke-width:1.5px
+    style XT1 fill:#ffffff,stroke:#4a6fa5,stroke-width:1.5px
+    style XT fill:#e8edf2,stroke:#4a6fa5,stroke-width:1.5px
+    style YT fill:#e8edf2,stroke:#4a6fa5,stroke-width:1.5px
+    style YT1 fill:#ffffff,stroke:#4a6fa5,stroke-width:1.5px
+    style YT2 fill:#ffffff,stroke:#4a6fa5,stroke-width:1.5px
+    style YT3 fill:#ffffff,stroke:#4a6fa5,stroke-width:1.5px
+    style Y0 fill:#d5e8d4,stroke:#6a9e5f,stroke-width:1.5px

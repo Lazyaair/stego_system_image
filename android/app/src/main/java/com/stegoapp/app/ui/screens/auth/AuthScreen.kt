@@ -107,7 +107,7 @@ fun AuthScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
             Text(
-                text = "基于 Pulsar 算法的可证安全图像隐写通信",
+                text = "可证安全图像隐写通信",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

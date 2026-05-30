@@ -22,14 +22,14 @@
     year    = {2004}
 }
 
-@inproceedings{fridrich2012rich,
-    author    = {Fridrich, Jessica and Kodovsk{\'y}, Jan},
-    title     = {Rich Models for Steganalysis of Digital Images},
-    booktitle = {IEEE Transactions on Information Forensics and Security},
-    volume    = {7},
-    number    = {3},
-    pages     = {868--882},
-    year      = {2012}
+@article{fridrich2012rich,
+    author  = {Fridrich, Jessica and Kodovsk{\'y}, Jan},
+    title   = {Rich Models for Steganalysis of Digital Images},
+    journal = {IEEE Transactions on Information Forensics and Security},
+    volume  = {7},
+    number  = {3},
+    pages   = {868--882},
+    year    = {2012}
 }
 
 @article{boroumand2019deep,
@@ -52,14 +52,14 @@
     year    = {2009}
 }
 
-@inproceedings{cachin2004information,
-    author    = {Cachin, Christian},
-    title     = {An Information-Theoretic Model for Steganography},
-    booktitle = {Information and Computation},
-    volume    = {192},
-    number    = {1},
-    pages     = {41--56},
-    year      = {2004}
+@article{cachin2004information,
+    author  = {Cachin, Christian},
+    title   = {An Information-Theoretic Model for Steganography},
+    journal = {Information and Computation},
+    volume  = {192},
+    number  = {1},
+    pages   = {41--56},
+    year    = {2004}
 }
 
 @inproceedings{de2022perfectly,
@@ -69,11 +69,14 @@
     year      = {2023}
 }
 
-@article{chen2024pulsar,
-    author  = {Chen, Guanlin and Tan, Shunquan and Li, Bin and Huang, Jiwu},
-    title   = {Pulsar: Secure Steganography for Diffusion Models},
-    journal = {arXiv preprint arXiv:2403.09800},
-    year    = {2024}
+@inproceedings{jois2024pulsar,
+    author    = {Jois, Tushar M. and Beck, Gabrielle and Kaptchuk, Gabriel},
+    title     = {Pulsar: Secure Steganography for Diffusion Models},
+    booktitle = {Proceedings of the 2024 ACM SIGSAC Conference on Computer and Communications Security (CCS '24)},
+    pages     = {4703--4717},
+    year      = {2024},
+    publisher = {ACM},
+    doi       = {10.1145/3658644.3690218}
 }
 
 @inproceedings{pevny2010using,
@@ -128,33 +131,40 @@
     year    = {2006}
 }
 
-@inproceedings{xu2016structural,
-    author    = {Xu, Guanshuo and Wu, Han-Zhou and Shi, Yun-Qing},
-    title     = {Structural Design of Convolutional Neural Networks for Steganalysis},
-    booktitle = {IEEE Signal Processing Letters},
-    volume    = {23},
-    number    = {5},
-    pages     = {708--712},
-    year      = {2016}
+@article{xu2016structural,
+    author  = {Xu, Guanshuo and Wu, Han-Zhou and Shi, Yun-Qing},
+    title   = {Structural Design of Convolutional Neural Networks for Steganalysis},
+    journal = {IEEE Signal Processing Letters},
+    volume  = {23},
+    number  = {5},
+    pages   = {708--712},
+    year    = {2016}
 }
 
-@inproceedings{ye2017deep,
-    author    = {Ye, Jian and Ni, Jiangqun and Yi, Yang},
-    title     = {Deep Learning Hierarchical Representations for Image Steganalysis},
-    booktitle = {IEEE Transactions on Information Forensics and Security},
-    volume    = {12},
-    number    = {11},
-    pages     = {2545--2557},
-    year      = {2017}
+@article{ye2017deep,
+    author  = {Ye, Jian and Ni, Jiangqun and Yi, Yang},
+    title   = {Deep Learning Hierarchical Representations for Image Steganalysis},
+    journal = {IEEE Transactions on Information Forensics and Security},
+    volume  = {12},
+    number  = {11},
+    pages   = {2545--2557},
+    year    = {2017}
 }
 
-@inproceedings{hu2018novel,
-    author    = {Hu, Donghui and Wang, Liang and Jiang, Wenjie and Zheng, Shuli and Li, Bin},
-    title     = {A Novel Image Steganography Method via Deep Convolutional Generative Adversarial Networks},
-    journal   = {IEEE Access},
-    volume    = {6},
-    pages     = {38303--38314},
-    year      = {2018}
+@article{hu2018novel,
+    author  = {Hu, Donghui and Wang, Liang and Jiang, Wenjie and Zheng, Shuli and Li, Bin},
+    title   = {A Novel Image Steganography Method via Deep Convolutional Generative Adversarial Networks},
+    journal = {IEEE Access},
+    volume  = {6},
+    pages   = {38303--38314},
+    year    = {2018}
+}
+
+@article{song2020denoising,
+    author  = {Song, Jiaming and Meng, Chenlin and Ermon, Stefano},
+    title   = {Denoising Diffusion Implicit Models},
+    journal = {arXiv preprint arXiv:2010.02502},
+    year    = {2020}
 }
 
 @article{ho2020denoising,
@@ -174,10 +184,10 @@
 }
 
 @misc{fette2011websocket,
-    author = {Fette, Ian and Melnikov, Alexey},
-    title  = {The {WebSocket} Protocol},
+    author       = {Fette, Ian and Melnikov, Alexey},
+    title        = {The {WebSocket} Protocol},
     howpublished = {RFC 6455},
-    year   = {2011}
+    year         = {2011}
 }
 
 @misc{jetpackcompose,
@@ -192,4 +202,68 @@
     title  = {{Vue.js}: The Progressive {JavaScript} Framework},
     url    = {https://vuejs.org/},
     year   = {2020}
+}
+
+@misc{marlinspike2016signal,
+    author = {Marlinspike, Moxie and Perrin, Trevor},
+    title  = {The {Signal} Protocol},
+    howpublished = {RFC draft},
+    url    = {https://signal.org/docs/},
+    year   = {2016}
+}
+
+@inproceedings{nichol2021improved,
+    author    = {Nichol, Alex and Dhariwal, Prafulla},
+    title     = {Improved Denoising Diffusion Probabilistic Models},
+    booktitle = {Proceedings of the 38th International Conference on Machine Learning (ICML)},
+    pages     = {8162--8171},
+    year      = {2021}
+}
+
+@inproceedings{rombach2022high,
+    author    = {Rombach, Robin and Blattmann, Andreas and Lorenz, Dominik and Esser, Patrick and Ommer, Bj{\"o}rn},
+    title     = {High-Resolution Image Synthesis with Latent Diffusion Models},
+    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+    pages     = {10684--10695},
+    year      = {2022}
+}
+
+@inproceedings{boroumand2018steganalysis,
+    author    = {Boroumand, Mehdi and Chen, Mo and Fridrich, Jessica},
+    title     = {Deep Residual Network for Steganalysis of Digital Images},
+    booktitle = {IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
+    pages     = {2112--2116},
+    year      = {2018}
+}
+
+@article{qian2015deep,
+    author  = {Qian, Yannan and Dong, Jing and Wang, Wei and Tan, Tieniu},
+    title   = {Deep Learning for Steganalysis via Convolutional Neural Networks},
+    journal = {Media Watermarking, Security, and Forensics, Proceedings of SPIE},
+    volume  = {9409},
+    pages   = {94090J},
+    year    = {2015}
+}
+
+@misc{rfc5869,
+    author       = {Krawczyk, Hugo and Eronen, Pasi},
+    title        = {HMAC-based Extract-and-Expand Key Derivation Function ({HKDF})},
+    howpublished = {RFC 5869},
+    year         = {2010}
+}
+
+@misc{nist80038d,
+    author       = {Dworkin, Morris},
+    title        = {Recommendation for Block Cipher Modes of Operation: {Galois/Counter Mode (GCM)} and {GMAC}},
+    howpublished = {NIST Special Publication 800-38D},
+    year         = {2007}
+}
+
+@inproceedings{wang2025sparsamp,
+    author    = {Wang, Yaofei and Pei, Gang and Chen, Kejiang and Ding, Jinyang and Pan, Chao and Pang, Weilong and Hu, Donghui and Zhang, Weiming},
+    title     = {{SparSamp}: Efficient Provably Secure Steganography Based on Sparse Sampling},
+    booktitle = {Proceedings of the 34th USENIX Conference on Security Symposium},
+    pages     = {6817--6835},
+    year      = {2025},
+    publisher = {USENIX Association}
 }

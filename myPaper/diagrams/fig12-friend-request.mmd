@@ -1,0 +1,28 @@
+sequenceDiagram
+    participant A as 用户 A
+    participant S as 服务器
+    participant B as 用户 B
+
+    rect rgb(240, 244, 248)
+    A->>S: 1. friend_request（验证信息）
+    S->>S: 2. 去重检查（是否已发送 / 已是好友）
+    alt 已存在
+        S-->>A: 返回错误提示
+    else 通过
+        S->>S: 3. 存入好友请求表
+        alt B 在线
+            S-->>B: 4. 推送 friend_request
+        else B 离线
+            S->>S: 4. 缓存到离线队列
+        end
+        S-->>A: ack（发送成功）
+    end
+    end
+
+    rect rgb(247, 247, 247)
+    B->>S: 5. accept（接受请求）
+    S->>S: 6. 建立双向好友关系
+    S->>S: 7. 恢复暂存消息
+    S-->>B: 8. 返回好友信息
+    S-->>A: 9. 通知 A 已接受
+    end

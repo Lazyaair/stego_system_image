@@ -1,25 +1,29 @@
 % 中文关键字
-\newcommand{\keywordsCn}[1][图像隐写；可证安全；扩散模型；跨平台通信；隐写系统]{#1}
+\newcommand{\keywordsCn}[1][图像隐写；可证安全；扩散模型；端到端加密；跨平台通信；隐写系统]{#1}
 % 中文摘要
 \begin{abstract}
     随着网络通信技术的快速发展，信息安全与隐私保护日益受到重视。图像隐写术作为信息隐藏技术的重要分支，通过将秘密信息嵌入载体图像中实现隐蔽通信，在国家安全、版权保护和隐私通信等领域具有重要应用价值。传统隐写方法在安全性方面存在不足，容易被基于深度学习的隐写分析工具检测。近年来，基于生成模型的可证安全隐写方案为解决这一问题提供了理论保障。
 
-    本文设计并实现了一个基于 Pulsar 算法的可证安全图像隐写系统。Pulsar 算法利用扩散模型的逆向采样过程，结合算术编码与伪随机数生成器，将秘密消息编码为模型生成图像的采样路径，从而实现可证安全的信息嵌入，使含密图像与正常生成图像在统计分布上不可区分。
+    本文设计并实现了一个基于扩散模型的可证安全图像隐写通信系统。系统集成了两种可证安全隐写算法：Pulsar 算法利用 DDPM 的逆向采样过程，结合纠错编码与伪随机数生成器，将秘密消息编码为采样路径；SparSamp 算法基于稀疏采样思想，通过消息驱动采样将消息段与伪随机数结合生成消息导出随机数（MRN），在 IDDPM 的 P2-weighting 框架下逐像素采样嵌入消息，并通过稀疏采样机制消除解码歧义。两种算法均保证含密图像与正常生成图像在统计分布上不可区分。
 
-    系统采用客户端--服务端架构，服务端基于 Python FastAPI 框架构建，集成 Pulsar 隐写算法，提供 RESTful API 和 WebSocket 实时通信服务；客户端包括基于 Kotlin Jetpack Compose 的 Android 应用和基于 Vue.js 3 的 Web 应用，均实现了用户注册登录、好友管理、实时聊天以及隐写消息收发等完整功能。系统支持普通消息与隐写消息两种通信模式，用户可在聊天过程中无缝切换，实现隐蔽的端到端信息传输。
+    在通信安全方面，系统实现了基于对称助记词的端到端加密机制。通信双方各自持有一个助记词短语，通过 PBKDF2-SHA256 派生用户密钥；双方的用户密钥经 HKDF-SHA256 生成对称消息密钥，使用 AES-256-GCM 对消息内容进行加密封装。隐写聊天模式下，加密后的密文作为隐写嵌入的载荷，实现了"先加密、再隐写"的双重保护。密钥协商采用基于邀请码的 XOR 方案，通信双方无需预先交换密钥即可独立计算出相同的隐写种子。
 
-    测试结果表明，系统功能完整、运行稳定，能够正确实现消息的隐写嵌入与提取，跨平台通信兼容性良好。本系统将可证安全隐写理论与实际工程应用相结合，为安全隐蔽通信提供了一种可行的解决方案。
+    系统采用客户端--服务端架构，服务端基于 Python FastAPI 框架构建，集成双算法隐写引擎和 WebSocket 实时通信服务；客户端包括基于 Kotlin Jetpack Compose 的 Android 应用和基于 Vue.js 3 的 Web 应用，均实现了用户注册登录、好友管理、实时聊天（支持消息送达/已读回执）、隐写消息收发和端到端加密配置等完整功能。Web 端采用 Aegis Slate 暗色 Material 3 设计系统，Android 端采用 Material 3 Expressive 薄荷色主题。
+
+    测试结果表明，系统功能完整、运行稳定，能够正确实现消息的端到端加密与隐写嵌入提取，双算法切换正常，跨平台通信兼容性良好。本系统将可证安全隐写理论与端到端加密相结合，为安全隐蔽通信提供了一种可行的工程实现方案。
 \end{abstract}
 
 % 英文关键字
-\newcommand{\keywordsEn}[1][Image Steganography; Provable Security; Diffusion Model; Cross-platform Communication; Steganography System]{#1}
+\newcommand{\keywordsEn}[1][Image Steganography; Provable Security; Diffusion Model; End-to-End Encryption; Cross-platform Communication; Steganography System]{#1}
 % 英文摘要
 \begin{abstractEn}
     With the rapid development of network communication technologies, information security and privacy protection have attracted increasing attention. Image steganography, as an important branch of information hiding, achieves covert communication by embedding secret messages into cover images and has significant applications in national security, copyright protection, and private communication. Traditional steganographic methods suffer from security deficiencies and are susceptible to detection by deep learning-based steganalysis tools. In recent years, provably secure steganographic schemes based on generative models have provided theoretical guarantees for addressing this problem.
 
-    This thesis designs and implements a provably secure image steganography system based on the Pulsar algorithm. The Pulsar algorithm leverages the reverse sampling process of diffusion models, combined with arithmetic coding and pseudo-random number generators, to encode secret messages as sampling paths of model-generated images, thereby achieving provably secure information embedding where stego images are statistically indistinguishable from normally generated images.
+    This thesis designs and implements a provably secure image steganography communication system based on diffusion models. The system integrates two provably secure steganographic algorithms: the Pulsar algorithm, which leverages the reverse sampling process of DDPM combined with error-correcting codes and pseudo-random number generators to encode secret messages as sampling paths; and the SparSamp algorithm, based on the concept of sparse sampling, which combines message segments with pseudo-random numbers via modular addition to generate Message-derived Random Numbers (MRNs) for pixel-wise sampling under the IDDPM P2-weighting framework, and resolves decoding ambiguity through iterative candidate set narrowing. Both algorithms guarantee that stego images are statistically indistinguishable from normally generated images.
 
-    The system adopts a client-server architecture. The server is built on the Python FastAPI framework, integrating the Pulsar steganographic algorithm and providing RESTful APIs and WebSocket real-time communication services. The client side includes an Android application based on Kotlin Jetpack Compose and a Web application based on Vue.js 3, both implementing complete functionalities including user registration and login, friend management, real-time chat, and steganographic message transmission. The system supports both normal and steganographic communication modes, allowing users to seamlessly switch during conversations for covert end-to-end information transmission.
+    For communication security, the system implements a symmetric-mnemonic-based end-to-end encryption mechanism. Each party holds a mnemonic phrase from which a user key is derived via PBKDF2-SHA256; the two user keys are then combined through HKDF-SHA256 to produce a symmetric message key, which is used with AES-256-GCM to encrypt and seal message content. In steganographic chat mode, the encrypted ciphertext serves as the payload for steganographic embedding, achieving a dual protection of ``encrypt first, then hide.'' The key negotiation uses an XOR scheme based on invite codes, allowing both parties to independently compute the same steganographic seed without prior key exchange.
 
-    Testing results demonstrate that the system is functionally complete and operates stably, correctly performing steganographic embedding and extraction of messages with good cross-platform communication compatibility. This system combines provably secure steganography theory with practical engineering applications, providing a feasible solution for secure covert communication.
+    The system adopts a client-server architecture. The server is built on the Python FastAPI framework, integrating a dual-algorithm steganographic engine and WebSocket real-time communication services. The client side includes an Android application based on Kotlin Jetpack Compose and a Web application based on Vue.js 3, both implementing complete functionalities including user registration and login, friend management, real-time chat with message delivery and read receipts, steganographic message transmission, and end-to-end encryption configuration. The Web client adopts the Aegis Slate dark Material 3 design system, while the Android client uses a Material 3 Expressive mint-themed design.
+
+    Testing results demonstrate that the system is functionally complete and operates stably, correctly performing end-to-end encryption and steganographic embedding/extraction with seamless dual-algorithm switching and good cross-platform communication compatibility. This system combines provably secure steganography theory with end-to-end encryption, providing a feasible engineering solution for secure covert communication.
 \end{abstractEn}

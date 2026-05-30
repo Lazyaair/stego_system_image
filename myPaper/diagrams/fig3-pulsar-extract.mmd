@@ -1,0 +1,15 @@
+graph LR
+    A["载密图像<br/>stego image"] --> C["种子初始化<br/>Seed = hash(key)"]
+    B["密钥 key"] --> C
+    C --> D["同步扩散<br/>确定性 DDPM"]
+    D --> E["区域定位<br/>定位嵌入区域"]
+    E --> F["消息解码<br/>Sage 纠错码"]
+    F --> G["原始消息<br/>message"]
+
+    style A fill:#e8edf2,stroke:#4a6fa5,stroke-width:2px
+    style B fill:#f0f4f8,stroke:#4a6fa5,stroke-width:2px
+    style C fill:#ffffff,stroke:#5a5a5a,stroke-width:1.5px
+    style D fill:#ffffff,stroke:#5a5a5a,stroke-width:1.5px
+    style E fill:#ffffff,stroke:#5a5a5a,stroke-width:1.5px
+    style F fill:#ffffff,stroke:#5a5a5a,stroke-width:1.5px
+    style G fill:#d5e8d4,stroke:#6a9e5f,stroke-width:2px

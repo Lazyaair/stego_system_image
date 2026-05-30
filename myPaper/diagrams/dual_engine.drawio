@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="26.0.0">
+  <diagram name="Dual Engine">
+    <mxGraphModel dx="1400" dy="1600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===== Title ===== -->
+        <mxCell id="title" value="双算法隐写引擎实现" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;fillColor=none;strokeColor=none;fontColor=#2D2D2D;" vertex="1" parent="1">
+          <mxGeometry x="400" y="20" width="600" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Left Column: PulsarService ===== -->
+        <mxCell id="left_header" value="PulsarService" style="text;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=middle;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="560" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Pulsar Step 1: Key -->
+        <mxCell id="p1" value="&lt;b&gt;密钥输入&lt;/b&gt;&#xa;key (≤64B) → seed (bytes)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="140" y="140" width="440" height="50" as="geometry" />
+        </mxCell>
+        <!-- Arrow -->
+        <mxCell id="pa1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="p1" target="p2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Pulsar Step 2: Model -->
+        <mxCell id="p2" value="&lt;b&gt;DDPM 模型加载&lt;/b&gt;&#xa;4 种 256×256 (celebahq/church/bedroom/cat)&#xa;字典缓存: model_id:key_hex → Pulsar 实例" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="140" y="220" width="440" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="pa2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="p2" target="p3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Pulsar Step 3: ECC -->
+        <mxCell id="p3" value="&lt;b&gt;消息纠错编码&lt;/b&gt;&#xa;Reed-Solomon + Reed-Muller 级联码" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="140" y="310" width="440" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="pa3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="p3" target="p4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Pulsar Step 4: Diffusion -->
+        <mxCell id="p4" value="&lt;b&gt;DDIMScheduler 逆向扩散&lt;/b&gt;&#xa;generate_with_regions(message) — 50 步去噪&#xa;倒数第二步: 方差噪声通道选择嵌入比特" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="140" y="390" width="440" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="pa4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="p4" target="p5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Pulsar Step 5: Output -->
+        <mxCell id="p5" value="&lt;b&gt;输出&lt;/b&gt;&#xa;含密图像 256×256 | 嵌入容量 320~613B" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="140" y="480" width="440" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Pulsar Performance box -->
+        <mxCell id="p_perf" value="&lt;b&gt;性能指标&lt;/b&gt;&#xa;嵌入 1.9s | 提取 2.4s | PSNR 60.04dB&#xa;SSIM 1.0000 | FID 0.06 | 正确率 100%" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="140" y="560" width="440" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Right Column: SparSampService ===== -->
+        <mxCell id="right_header" value="SparSampService" style="text;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=middle;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="780" y="80" width="560" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- SparSamp Step 1: Key -->
+        <mxCell id="s1" value="&lt;b&gt;密钥派生&lt;/b&gt;&#xa;key → SHA-256 → diffusion_seed (4B) + sparsample_seed (4B)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="840" y="140" width="440" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="sa1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="s1" target="s2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- SparSamp Step 2: Model -->
+        <mxCell id="s2" value="&lt;b&gt;IDDPM P2 模型加载&lt;/b&gt;&#xa;4 种 256×256 (ffhq/afhqdog/flower/cub)&#xa;双层缓存: _model_cache + _state_cache" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="840" y="220" width="440" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sa2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="s2" target="s3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- SparSamp Step 3: Diffusion -->
+        <mxCell id="s3" value="&lt;b&gt;P2-weighting 确定性扩散&lt;/b&gt;&#xa;10 respaced 步 (自 1000 步线性 β 调度)&#xa;t=T-1 → t=1, 输出 x₁ + (μ, σ)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="840" y="310" width="440" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sa3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="s3" target="s4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- SparSamp Step 4: Quantization + Arithmetic coding -->
+        <mxCell id="s4" value="&lt;b&gt;高斯量化 + 算术编码嵌入&lt;/b&gt;&#xa;256 bin 量化 | 消息段 + PRN = MRN&#xa;稀疏采样消歧 | block_size=32 bits" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="840" y="400" width="440" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sa4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="s4" target="s5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- SparSamp Step 5: Output -->
+        <mxCell id="s5" value="&lt;b&gt;输出&lt;/b&gt;&#xa;含密图像 256×256 | 嵌入容量 ≈58KB (144×)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="840" y="490" width="440" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- SparSamp Performance box -->
+        <mxCell id="s_perf" value="&lt;b&gt;性能指标&lt;/b&gt;&#xa;嵌入 12.4s | 提取 0.03s | PSNR 42.77dB&#xa;SSIM 0.9988 | FID 1.76 | 正确率 100%" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="840" y="570" width="440" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Bottom: Comparison Summary ===== -->
+        <mxCell id="summary" value="&lt;b&gt;对比总结&lt;/b&gt;：Pulsar 适合低延迟场景（容量小、质量高）；SparSamp 适合大容量场景（144× 容量、提取极快）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="140" y="660" width="1140" height="50" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

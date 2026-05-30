@@ -1,0 +1,32 @@
+sequenceDiagram
+    participant Sender as 发送方
+    participant SAPI as 隐写服务
+    participant WS as WebSocket 服务
+    participant ExtAPI as 提取服务
+    participant Receiver as 接收方
+
+    Note over Sender: 准备：明文消息 + stego_key
+
+    rect rgb(240, 244, 248)
+    Sender->>Sender: 1. AES-256-GCM 加密<br/>生成 SealedMessage
+    Sender->>SAPI: 2. POST /stego/embed<br/>{message, key, model}
+    SAPI->>SAPI: 3. 扩散模型生成载图<br/>将密文嵌入像素
+    SAPI-->>Sender: 4. 返回载密图像（base64）
+    end
+
+    Sender->>WS: 5. 发送载图（WS chat 消息）
+
+    alt 接收方在线
+        WS-->>Receiver: 6. 推送载图消息
+    else 接收方离线
+        WS->>WS: 6. 存入离线消息队列
+    end
+
+    rect rgb(247, 247, 247)
+    Receiver->>ExtAPI: 7. POST /stego/extract<br/>{image, key, model}
+    ExtAPI->>ExtAPI: 8. 扩散模型同步采样<br/>从像素提取密文
+    ExtAPI-->>Receiver: 9. 返回 SealedMessage
+    Receiver->>Receiver: 10. AES-256-GCM 解密<br/>还原明文消息
+    end
+
+    Note over Receiver: 明文消息显示

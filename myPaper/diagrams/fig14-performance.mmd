@@ -1,0 +1,42 @@
+graph TB
+    subgraph title["Pulsar 与 SparSample 性能对比"]
+        direction TB
+
+        subgraph capacity["嵌入容量"]
+            direction LR
+            C1["Pulsar<br/>约 4 bits/pixel"]
+            C2["SparSample<br/>约 2 ~ 6 bits/pixel"]
+        end
+
+        subgraph time["计算耗时"]
+            direction LR
+            T1["Pulsar<br/>首次约 30s<br/>缓存后约 2s"]
+            T2["SparSample<br/>首次约 50s<br/>缓存后约 1s"]
+        end
+
+        subgraph quality["图像质量"]
+            direction LR
+            Q1["Pulsar<br/>FID 较低<br/>SSIM 大于 0.95"]
+            Q2["SparSample<br/>FID 较低<br/>SSIM 大于 0.90"]
+        end
+
+        subgraph security["安全性"]
+            direction LR
+            S1["Pulsar<br/>可证安全<br/>KL 散度趋于 0"]
+            S2["SparSample<br/>可证安全<br/>KL 散度趋于 0"]
+        end
+    end
+
+    style title fill:#ffffff,stroke:#888888,stroke-width:2px
+    style capacity fill:#f0f4f8,stroke:#4a6fa5,stroke-width:1.5px
+    style time fill:#f7f7f7,stroke:#888888,stroke-width:1.5px
+    style quality fill:#f0f4f8,stroke:#4a6fa5,stroke-width:1.5px
+    style security fill:#f7f7f7,stroke:#888888,stroke-width:1.5px
+    style C1 fill:#dae8fc,stroke:#4a6fa5,stroke-width:1.5px
+    style C2 fill:#b8d4f0,stroke:#4a6fa5,stroke-width:1.5px
+    style T1 fill:#e8edf2,stroke:#5a5a5a,stroke-width:1.5px
+    style T2 fill:#d0d8e0,stroke:#5a5a5a,stroke-width:1.5px
+    style Q1 fill:#d5e8d4,stroke:#6a9e5f,stroke-width:1.5px
+    style Q2 fill:#bcd9b6,stroke:#6a9e5f,stroke-width:1.5px
+    style S1 fill:#e1d5e7,stroke:#8b6fad,stroke-width:1.5px
+    style S2 fill:#d0c3da,stroke:#8b6fad,stroke-width:1.5px

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="26.0.0">
+  <diagram name="Code Stats">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="成果展示 — 代码量统计" style="text;html=1;fontSize=22;fontStyle=1;align=center;verticalAlign=middle;fillColor=none;strokeColor=none;fontColor=#2D2D2D;" vertex="1" parent="1">
+          <mxGeometry x="350" y="15" width="700" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Table ===== -->
+        <mxCell id="table1" value="&lt;table style='font-size:13px;border-collapse:collapse;width:100%'&gt;&lt;tr style='background:#4a6fa5;color:#fff'&gt;&lt;th style='padding:8px 16px;text-align:left'&gt;模块&lt;/th&gt;&lt;th style='padding:8px 16px;text-align:center'&gt;文件数&lt;/th&gt;&lt;th style='padding:8px 16px;text-align:center'&gt;代码行数&lt;/th&gt;&lt;th style='padding:8px 16px;text-align:center'&gt;占比&lt;/th&gt;&lt;th style='padding:8px 16px;text-align:left'&gt;主要组成&lt;/th&gt;&lt;/tr&gt;&lt;tr style='background:#f0f4f8'&gt;&lt;td style='padding:6px 16px'&gt;&lt;b&gt;服务端 (Python)&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:6px 16px;text-align:center'&gt;—&lt;/td&gt;&lt;td style='padding:6px 16px;text-align:center'&gt;&lt;b&gt;2,062&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:6px 16px;text-align:center'&gt;12.4%&lt;/td&gt;&lt;td style='padding:6px 16px'&gt;FastAPI 路由 · WS 管理 · 队列 · Sage 纠错码&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:6px 16px'&gt;&lt;b&gt;Android (Kotlin)&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:6px 16px;text-align:center'&gt;35&lt;/td&gt;&lt;td style='padding:6px 16px;text-align:center'&gt;&lt;b&gt;6,592&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:6px 16px;text-align:center'&gt;39.6%&lt;/td&gt;&lt;td style='padding:6px 16px'&gt;9 个 Compose 页面 · 4 ViewModel · Room · Crypto&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#f0f4f8'&gt;&lt;td style='padding:6px 16px'&gt;&lt;b&gt;Web (Vue 3)&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:6px 16px;text-align:center'&gt;31&lt;/td&gt;&lt;td style='padding:6px 16px;text-align:center'&gt;&lt;b&gt;3,607&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:6px 16px;text-align:center'&gt;21.7%&lt;/td&gt;&lt;td style='padding:6px 16px'&gt;10 视图 · 4 Store · IndexedDB · Web Crypto&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style='padding:6px 16px'&gt;&lt;b&gt;隐写算法&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:6px 16px;text-align:center'&gt;14&lt;/td&gt;&lt;td style='padding:6px 16px;text-align:center'&gt;&lt;b&gt;4,367&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:6px 16px;text-align:center'&gt;26.3%&lt;/td&gt;&lt;td style='padding:6px 16px'&gt;Pulsar (DDPM 2,386) · SparSamp (IDDPM 1,981)&lt;/td&gt;&lt;/tr&gt;&lt;tr style='background:#dae8fc;font-weight:bold'&gt;&lt;td style='padding:8px 16px'&gt;&lt;b&gt;合计&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:8px 16px;text-align:center'&gt;—&lt;/td&gt;&lt;td style='padding:8px 16px;text-align:center'&gt;&lt;b&gt;16,628&lt;/b&gt;&lt;/td&gt;&lt;td style='padding:8px 16px;text-align:center'&gt;100%&lt;/td&gt;&lt;td style='padding:8px 16px'&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontSize=12;html=1;fillColor=none;strokeColor=#cccccc;shadow=0;" vertex="1" parent="1">
+          <mxGeometry x="100" y="70" width="1200" height="220" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Bar Chart (horizontal) ===== -->
+        <!-- Background -->
+        <mxCell id="bg" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#cccccc;" vertex="1" parent="1">
+          <mxGeometry x="100" y="330" width="1200" height="370" as="geometry" />
+        </mxCell>
+
+        <!-- Chart title -->
+        <mxCell id="ct" value="代码行数占比" style="text;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=middle;fillColor=none;strokeColor=none;fontColor=#2D2D2D;" vertex="1" parent="1">
+          <mxGeometry x="500" y="340" width="400" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Bar: Server 12.4% → width = 12.4/40 * 900 = 279 -->
+        <mxCell id="bar1_label" value="服务端&#xa;2,062 行" style="text;html=1;fontSize=12;fontStyle=1;align=right;verticalAlign=middle;fillColor=none;strokeColor=none;fontColor=#2D2D2D;" vertex="1" parent="1">
+          <mxGeometry x="110" y="395" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="bar1" value="12.4%" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;fontColor=#2D2D2D;align=right;verticalAlign=middle;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="280" y="395" width="279" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Bar: Android 39.6% → width = 39.6/40 * 900 = 891 -->
+        <mxCell id="bar2_label" value="Android&#xa;6,592 行" style="text;html=1;fontSize=12;fontStyle=1;align=right;verticalAlign=middle;fillColor=none;strokeColor=none;fontColor=#2D2D2D;" vertex="1" parent="1">
+          <mxGeometry x="110" y="455" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="bar2" value="39.6%" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#82b366;strokeColor=#5a8a3c;fontSize=12;fontStyle=1;fontColor=#ffffff;align=right;verticalAlign=middle;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="280" y="455" width="891" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Bar: Web 21.7% → width = 21.7/40 * 900 = 488 -->
+        <mxCell id="bar3_label" value="Web&#xa;3,607 行" style="text;html=1;fontSize=12;fontStyle=1;align=right;verticalAlign=middle;fillColor=none;strokeColor=none;fontColor=#2D2D2D;" vertex="1" parent="1">
+          <mxGeometry x="110" y="515" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="bar3" value="21.7%" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#6d4d8a;fontSize=12;fontStyle=1;fontColor=#ffffff;align=right;verticalAlign=middle;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="280" y="515" width="488" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Bar: Algorithm 26.3% → width = 26.3/40 * 900 = 592 -->
+        <mxCell id="bar4_label" value="隐写算法&#xa;4,367 行" style="text;html=1;fontSize=12;fontStyle=1;align=right;verticalAlign=middle;fillColor=none;strokeColor=none;fontColor=#2D2D2D;" vertex="1" parent="1">
+          <mxGeometry x="110" y="575" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="bar4" value="26.3%" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d6b656;strokeColor=#b89a3a;fontSize=12;fontStyle=1;fontColor=#ffffff;align=right;verticalAlign=middle;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="280" y="575" width="592" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Total label -->
+        <mxCell id="total_label" value="总计 16,628 行代码" style="text;html=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fillColor=none;strokeColor=none;fontColor=#4a6fa5;" vertex="1" parent="1">
+          <mxGeometry x="500" y="650" width="400" height="30" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

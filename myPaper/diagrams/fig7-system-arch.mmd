@@ -1,0 +1,42 @@
+graph TB
+    subgraph client["客户端层"]
+        direction LR
+        AND["Android 客户端<br/>Kotlin + Jetpack Compose<br/>Room + OkHttp"]
+        WEB["Web 客户端<br/>Vue 3 + TypeScript<br/>Pinia + Tailwind"]
+    end
+
+    subgraph comm["通信层"]
+        direction LR
+        REST["REST API<br/>HTTP / HTTPS"]
+        WS["WebSocket<br/>实时双向通信"]
+    end
+
+    subgraph server["服务层"]
+        direction LR
+        FAST["FastAPI<br/>应用框架"]
+        subgraph algo["双算法隐写引擎"]
+            PUL["Pulsar<br/>扩散模型"]
+            SPA["SparSample<br/>P2-weighting"]
+        end
+        DB["SQLite<br/>数据库"]
+    end
+
+    AND -->|"REST / WS"| comm
+    WEB -->|"REST / WS"| comm
+    REST --> FAST
+    WS --> FAST
+    FAST --> algo
+    FAST --> DB
+
+    style client fill:#f0f4f8,stroke:#4a6fa5,stroke-width:2px
+    style comm fill:#f7f7f7,stroke:#888888,stroke-width:2px
+    style server fill:#f0f4f8,stroke:#4a6fa5,stroke-width:2px
+    style algo fill:#ffffff,stroke:#8b6fad,stroke-width:1.5px
+    style AND fill:#dae8fc,stroke:#4a6fa5,stroke-width:1.5px
+    style WEB fill:#dae8fc,stroke:#4a6fa5,stroke-width:1.5px
+    style REST fill:#e8edf2,stroke:#5a5a5a,stroke-width:1.5px
+    style WS fill:#e8edf2,stroke:#5a5a5a,stroke-width:1.5px
+    style FAST fill:#d5e8d4,stroke:#6a9e5f,stroke-width:1.5px
+    style DB fill:#fff2cc,stroke:#d6b656,stroke-width:1.5px
+    style PUL fill:#e1d5e7,stroke:#8b6fad,stroke-width:1.5px
+    style SPA fill:#e1d5e7,stroke:#8b6fad,stroke-width:1.5px

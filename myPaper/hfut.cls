@@ -152,6 +152,7 @@
         zihao=-4,
         fontset=fandol
     ]{ctex}
+    \xeCJKsetup{AutoFakeBold=true}
 }
 
 \ifdefstring{\HFUT@font}{adobe}{
@@ -162,6 +163,8 @@
         zihao=-4,
         fontset=none
     ]{ctex}
+
+    \xeCJKsetup{AutoFakeBold=true}
 
     \defaultfontfeatures{Path = fonts/, Mapping=tex-text}
 

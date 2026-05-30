@@ -1,0 +1,25 @@
+{
+  "timestamp": "20260526_151444",
+  "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU",
+  "elapsed_sec": 2818.4,
+  "n_pairs_per_algo": 20,
+  "message": "Hello, this is a test message for steganography quality evaluation!",
+  "results": {
+    "Pulsar / CelebA-HQ DDIM": {
+      "n_pairs": 20,
+      "psnr_mean": 60.04,
+      "psnr_std": 0.9,
+      "ssim_mean": 1.0,
+      "ssim_std": 0.0,
+      "fid": 0.06
+    },
+    "SparSample / FFHQ IDDPM P2": {
+      "n_pairs": 20,
+      "psnr_mean": 42.77,
+      "psnr_std": 0.01,
+      "ssim_mean": 0.9988,
+      "ssim_std": 0.0003,
+      "fid": 1.76
+    }
+  }
+}

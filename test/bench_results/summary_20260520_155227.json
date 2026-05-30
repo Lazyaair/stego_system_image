@@ -1,0 +1,494 @@
+{
+  "timestamp": "20260520_155227",
+  "elapsed_sec": 384.9,
+  "keys": [
+    "g7bpjiitk980xsomli5nlzf0",
+    "nqn1goxx21s91a3lrfub48ik",
+    "33lt4u43vov06c83muckhi03",
+    "k9k7gqdh8slmbnuhtia2c879",
+    "ulke5sf27fv37rhjsq1y7yv7"
+  ],
+  "capacity": [
+    {
+      "algorithm": "Pulsar",
+      "key": "g7bpjiitk980xsomli5nlzf0",
+      "capacity_bytes": 457,
+      "init_time": 9.57
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "g7bpjiitk980xsomli5nlzf0",
+      "capacity_bytes": 58072,
+      "init_time": 18.8
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "nqn1goxx21s91a3lrfub48ik",
+      "capacity_bytes": 357,
+      "init_time": 9.2
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "nqn1goxx21s91a3lrfub48ik",
+      "capacity_bytes": 58136,
+      "init_time": 17.84
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "33lt4u43vov06c83muckhi03",
+      "capacity_bytes": 743,
+      "init_time": 9.02
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "33lt4u43vov06c83muckhi03",
+      "capacity_bytes": 58068,
+      "init_time": 17.8
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "k9k7gqdh8slmbnuhtia2c879",
+      "capacity_bytes": 328,
+      "init_time": 9.01
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "k9k7gqdh8slmbnuhtia2c879",
+      "capacity_bytes": 58056,
+      "init_time": 17.8
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "ulke5sf27fv37rhjsq1y7yv7",
+      "capacity_bytes": 328,
+      "init_time": 9.04
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "ulke5sf27fv37rhjsq1y7yv7",
+      "capacity_bytes": 58028,
+      "init_time": 17.94
+    }
+  ],
+  "roundtrip": [
+    {
+      "algorithm": "Pulsar",
+      "key": "g7bpjiitk980xsomli5nlzf0",
+      "msg_label": "short",
+      "msg_len": 6,
+      "capacity": 457,
+      "embed_time": 2.943,
+      "extract_time": 2.659,
+      "correct": false,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 86.77,
+      "img_std": 67.31
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "g7bpjiitk980xsomli5nlzf0",
+      "msg_label": "short",
+      "msg_len": 6,
+      "capacity": 58072,
+      "embed_time": 12.353,
+      "extract_time": 0.006,
+      "correct": true,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 110.28,
+      "img_std": 42.82
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "g7bpjiitk980xsomli5nlzf0",
+      "msg_label": "medium",
+      "msg_len": 62,
+      "capacity": 457,
+      "embed_time": 1.886,
+      "extract_time": 2.486,
+      "correct": false,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 86.77,
+      "img_std": 67.31
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "g7bpjiitk980xsomli5nlzf0",
+      "msg_label": "medium",
+      "msg_len": 62,
+      "capacity": 58072,
+      "embed_time": 12.475,
+      "extract_time": 0.026,
+      "correct": true,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 110.28,
+      "img_std": 42.82
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "g7bpjiitk980xsomli5nlzf0",
+      "msg_label": "long",
+      "msg_len": 150,
+      "capacity": 457,
+      "embed_time": 2.349,
+      "extract_time": 3.049,
+      "correct": false,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 86.77,
+      "img_std": 67.31
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "g7bpjiitk980xsomli5nlzf0",
+      "msg_label": "long",
+      "msg_len": 150,
+      "capacity": 58072,
+      "embed_time": 12.38,
+      "extract_time": 0.041,
+      "correct": true,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 110.28,
+      "img_std": 42.82
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "nqn1goxx21s91a3lrfub48ik",
+      "msg_label": "short",
+      "msg_len": 6,
+      "capacity": 357,
+      "embed_time": 1.858,
+      "extract_time": 2.168,
+      "correct": false,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 127.67,
+      "img_std": 45.84
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "nqn1goxx21s91a3lrfub48ik",
+      "msg_label": "short",
+      "msg_len": 6,
+      "capacity": 58136,
+      "embed_time": 12.342,
+      "extract_time": 0.006,
+      "correct": true,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 126.31,
+      "img_std": 27.8
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "nqn1goxx21s91a3lrfub48ik",
+      "msg_label": "medium",
+      "msg_len": 62,
+      "capacity": 357,
+      "embed_time": 1.873,
+      "extract_time": 2.235,
+      "correct": false,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 127.67,
+      "img_std": 45.84
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "nqn1goxx21s91a3lrfub48ik",
+      "msg_label": "medium",
+      "msg_len": 62,
+      "capacity": 58136,
+      "embed_time": 12.37,
+      "extract_time": 0.018,
+      "correct": true,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 126.3,
+      "img_std": 27.8
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "nqn1goxx21s91a3lrfub48ik",
+      "msg_label": "long",
+      "msg_len": 150,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "nqn1goxx21s91a3lrfub48ik",
+      "msg_label": "long",
+      "msg_len": 150,
+      "capacity": 58136,
+      "embed_time": 12.309,
+      "extract_time": 0.039,
+      "correct": true,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 126.31,
+      "img_std": 27.8
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "33lt4u43vov06c83muckhi03",
+      "msg_label": "short",
+      "msg_len": 6,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "33lt4u43vov06c83muckhi03",
+      "msg_label": "short",
+      "msg_len": 6,
+      "capacity": 58068,
+      "embed_time": 12.282,
+      "extract_time": 0.006,
+      "correct": true,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 106.14,
+      "img_std": 39.61
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "33lt4u43vov06c83muckhi03",
+      "msg_label": "medium",
+      "msg_len": 62,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "33lt4u43vov06c83muckhi03",
+      "msg_label": "medium",
+      "msg_len": 62,
+      "capacity": 58068,
+      "embed_time": 12.305,
+      "extract_time": 0.021,
+      "correct": true,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 106.14,
+      "img_std": 39.6
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "33lt4u43vov06c83muckhi03",
+      "msg_label": "long",
+      "msg_len": 150,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "33lt4u43vov06c83muckhi03",
+      "msg_label": "long",
+      "msg_len": 150,
+      "capacity": 58068,
+      "embed_time": 12.29,
+      "extract_time": 0.039,
+      "correct": true,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 106.14,
+      "img_std": 39.6
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "k9k7gqdh8slmbnuhtia2c879",
+      "msg_label": "short",
+      "msg_len": 6,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "k9k7gqdh8slmbnuhtia2c879",
+      "msg_label": "short",
+      "msg_len": 6,
+      "capacity": 58056,
+      "embed_time": 11.973,
+      "extract_time": 0.006,
+      "correct": true,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 134.58,
+      "img_std": 36.09
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "k9k7gqdh8slmbnuhtia2c879",
+      "msg_label": "medium",
+      "msg_len": 62,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "k9k7gqdh8slmbnuhtia2c879",
+      "msg_label": "medium",
+      "msg_len": 62,
+      "capacity": 58056,
+      "embed_time": 12.332,
+      "extract_time": 0.018,
+      "correct": true,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 134.57,
+      "img_std": 36.1
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "k9k7gqdh8slmbnuhtia2c879",
+      "msg_label": "long",
+      "msg_len": 150,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "k9k7gqdh8slmbnuhtia2c879",
+      "msg_label": "long",
+      "msg_len": 150,
+      "capacity": 58056,
+      "embed_time": 12.218,
+      "extract_time": 0.042,
+      "correct": true,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 134.57,
+      "img_std": 36.1
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "ulke5sf27fv37rhjsq1y7yv7",
+      "msg_label": "short",
+      "msg_len": 6,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "ulke5sf27fv37rhjsq1y7yv7",
+      "msg_label": "short",
+      "msg_len": 6,
+      "capacity": 58028,
+      "embed_time": 12.373,
+      "extract_time": 0.007,
+      "correct": true,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 124.75,
+      "img_std": 38.57
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "ulke5sf27fv37rhjsq1y7yv7",
+      "msg_label": "medium",
+      "msg_len": 62,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "ulke5sf27fv37rhjsq1y7yv7",
+      "msg_label": "medium",
+      "msg_len": 62,
+      "capacity": 58028,
+      "embed_time": 12.024,
+      "extract_time": 0.02,
+      "correct": true,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 124.75,
+      "img_std": 38.57
+    },
+    {
+      "algorithm": "Pulsar",
+      "key": "ulke5sf27fv37rhjsq1y7yv7",
+      "msg_label": "long",
+      "msg_len": 150,
+      "error": "[Errno 32] Broken pipe"
+    },
+    {
+      "algorithm": "SparSample",
+      "key": "ulke5sf27fv37rhjsq1y7yv7",
+      "msg_label": "long",
+      "msg_len": 150,
+      "capacity": 58028,
+      "embed_time": 12.063,
+      "extract_time": 0.041,
+      "correct": true,
+      "img_shape": [
+        256,
+        256,
+        3
+      ],
+      "img_mean": 124.75,
+      "img_std": 38.57
+    }
+  ],
+  "crosskey": [
+    {
+      "algorithm": "SparSample",
+      "embed_key": "g7bpjiitk980xsomli5nlzf0",
+      "extract_key": "nqn1goxx21s91a3lrfub48ik",
+      "cross_key_match": false,
+      "safe": true
+    }
+  ]
+}

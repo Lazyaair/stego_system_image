@@ -17,5 +17,48 @@ models/
 pulsar/bench-results/
 pulsar/.git/
 
+# Jupyter Notebook (基准测试分析,体积大)
+*.ipynb
+.ipynb_checkpoints/
+
+# WSL Zone.Identifier 残留
+*:Zone.Identifier
+
+# 符号链接到 Windows 目录
+myPaper/img_win
+
+# PPT 相关 (不入库)
+myPaper/defense.pptx
+myPaper/template_hfut.pptx
+myPaper/template_red.pptx
+myPaper/gen_defense_ppt.py
+
+# 演示大纲
+docs/demo-outline.md
+
+# LaTeX 中间产物 (myPaper 编译生成)
+myPaper/*.aux
+myPaper/*.bbl
+myPaper/*.bcf
+myPaper/*.blg
+myPaper/*.fdb_latexmk
+myPaper/*.fls
+myPaper/*.loc
+myPaper/*.lof
+myPaper/*.log
+myPaper/*.lot
+myPaper/*.out
+myPaper/*.run.xml
+myPaper/*.soc
+myPaper/*.synctex.gz
+myPaper/*.toc
+myPaper/*.xdv
+myPaper/*.nav
+myPaper/*.snm
+myPaper/*.vrb
+myPaper/tex/*.aux
+myPaper/tex/pages/*.aux
+myPaper/tmp/
+
 # Demo output
 test/sparsample/t.png

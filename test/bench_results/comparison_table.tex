@@ -1,0 +1,19 @@
+\begin{table}[htb!]
+    \caption{Pulsar 与 SparSample 算法性能对比}
+    \centering
+    \begin{tabular}{lcc}
+        \hline
+        \textbf{指标} & \textbf{Pulsar (DDIM)} & \textbf{SparSample (IDDPM P2)} \\
+        \hline
+        平均嵌入容量 (bytes) & 403 & 58112 \\
+        平均嵌入耗时 (s) & 1.9 & 12.4 \\
+        平均提取耗时 (s) & 2.4 & 0.0 \\
+        提取正确率 & 100\% & 100\% \\
+        跨密钥安全 & 是 & 是 \\
+        输出图像格式 & 16-bit PNG & 8-bit PNG \\
+        图像分辨率 & 256$\times$256 & 256$\times$256 \\
+        可证安全性 & 是 & 是 \\
+        \hline
+    \end{tabular}
+    \label{tab:algo_comparison}
+\end{table}

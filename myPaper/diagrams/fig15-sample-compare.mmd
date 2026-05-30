@@ -1,0 +1,30 @@
+graph LR
+    subgraph original["原始图像  x₀"]
+        direction TB
+        O1["自然人脸图像<br/>CelebA-HQ 数据集<br/>256 x 256 像素"]
+    end
+
+    subgraph stego_p["Pulsar 载密图像"]
+        direction TB
+        P1["嵌入密文后生成<br/>视觉无差异<br/>PSNR 大于 40dB<br/>SSIM 大于 0.95"]
+    end
+
+    subgraph stego_s["SparSample 载密图像"]
+        direction TB
+        S1["嵌入密文后生成<br/>视觉无差异<br/>PSNR 大于 38dB<br/>SSIM 大于 0.90"]
+    end
+
+    original -->|"Pulsar 嵌入<br/>key + message"| stego_p
+    original -->|"SparSample 嵌入<br/>key + message"| stego_s
+
+    stego_p -->|"提取密文 key"| D1["还原 message"]
+    stego_s -->|"提取密文 key"| D2["还原 message"]
+
+    style original fill:#f0f4f8,stroke:#4a6fa5,stroke-width:2px
+    style stego_p fill:#f0f4f8,stroke:#4a6fa5,stroke-width:2px
+    style stego_s fill:#f7f7f7,stroke:#888888,stroke-width:2px
+    style O1 fill:#dae8fc,stroke:#4a6fa5,stroke-width:1.5px
+    style P1 fill:#d5e8d4,stroke:#6a9e5f,stroke-width:1.5px
+    style S1 fill:#e8edf2,stroke:#5a5a5a,stroke-width:1.5px
+    style D1 fill:#d5e8d4,stroke:#6a9e5f,stroke-width:1.5px
+    style D2 fill:#e8edf2,stroke:#5a5a5a,stroke-width:1.5px

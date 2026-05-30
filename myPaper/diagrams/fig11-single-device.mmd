@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant NewC as 新客户端
+    participant S as 服务器
+    participant OldC as 旧客户端
+
+    Note over OldC: 已有活跃 WebSocket 连接
+
+    rect rgb(240, 244, 248)
+    NewC->>S: 1. WebSocket 连接请求（JWT token）
+    S->>S: 2. 验证 token，查找旧连接
+    S-->>OldC: 3. 发送 {"type": "kicked"}
+    S->>S: 4. 启动 5 秒定时器
+    OldC->>OldC: 5. 收到 kicked，显示提示
+    OldC->>S: 6. 主动关闭连接
+    S-->>NewC: 7. 连接建立成功
+    end
+
+    Note over NewC: 新连接接管，开始正常通信
+
+    Note over S: 若 5 秒后旧连接未关闭
+    S->>S: 8. 强制关闭旧连接

@@ -1,1 +1,1 @@
-latexmk -synctex=1 -pdfxe -shell-escape -interaction=nonstopmode -file-line-error -outdir=tmp Thesis.tex
+latexmk -f -synctex=1 -pdfxe -shell-escape -interaction=nonstopmode -file-line-error Thesis.tex

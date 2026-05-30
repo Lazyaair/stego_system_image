@@ -1,0 +1,33 @@
+graph TD
+    subgraph user_key["用户密钥派生"]
+        MN["助记词短语<br/>mnemonic"] -->|PBKDF2<br/>100,000 次迭代| UK["user_key<br/>用户密钥"]
+    end
+
+    subgraph msg_enc["消息加密链路"]
+        UK -->|HKDF 派生| MK["msg_key<br/>消息密钥 32B"]
+        PT["明文消息<br/>plaintext"] --> AES["AES-256-GCM<br/>对称加密"]
+        MK --> AES
+        AES --> CT["密文 SealedMessage<br/>nonce + ciphertext + tag"]
+    end
+
+    subgraph stego_key["隐写密钥派生"]
+        ICA["发送方 invite_code"] --> XOR["XOR 拼接"]
+        ICB["接收方 invite_code"] --> XOR
+        XOR --> SK["stego_key<br/>隐写密钥"]
+    end
+
+    SK --> STG["隐写嵌入<br/>Pulsar / SparSample"]
+    CT --> STG
+    STG --> IMG["载密图像"]
+
+    style user_key fill:#f0f4f8,stroke:#4a6fa5,stroke-width:2px
+    style msg_enc fill:#f7f7f7,stroke:#888888,stroke-width:1.5px
+    style stego_key fill:#f0f4f8,stroke:#4a6fa5,stroke-width:2px
+    style MN fill:#ffffff,stroke:#4a6fa5,stroke-width:1.5px
+    style UK fill:#dae8fc,stroke:#4a6fa5,stroke-width:1.5px
+    style MK fill:#dae8fc,stroke:#4a6fa5,stroke-width:1.5px
+    style PT fill:#d5e8d4,stroke:#6a9e5f,stroke-width:1.5px
+    style CT fill:#e8edf2,stroke:#5a5a5a,stroke-width:1.5px
+    style SK fill:#e1d5e7,stroke:#8b6fad,stroke-width:1.5px
+    style STG fill:#ffffff,stroke:#5a5a5a,stroke-width:1.5px
+    style IMG fill:#d5e8d4,stroke:#6a9e5f,stroke-width:2px

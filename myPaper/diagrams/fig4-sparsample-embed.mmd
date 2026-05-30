@@ -1,0 +1,15 @@
+graph LR
+    A["密钥 key"] --> B["密钥派生<br/>PBKDF2(key, salt)"]
+    B --> C["确定性扩散采样<br/>IDDPM P2-weighting"]
+    C --> D["分布计算<br/>每步噪声分布"]
+    D --> E["高斯量化<br/>消息映射到分布"]
+    E --> F["算术编码<br/>高效压缩编码"]
+    F --> G["载密图像<br/>stego image"]
+
+    style A fill:#f0f4f8,stroke:#4a6fa5,stroke-width:2px
+    style B fill:#ffffff,stroke:#5a5a5a,stroke-width:1.5px
+    style C fill:#ffffff,stroke:#5a5a5a,stroke-width:1.5px
+    style D fill:#ffffff,stroke:#5a5a5a,stroke-width:1.5px
+    style E fill:#ffffff,stroke:#5a5a5a,stroke-width:1.5px
+    style F fill:#ffffff,stroke:#5a5a5a,stroke-width:1.5px
+    style G fill:#d5e8d4,stroke:#6a9e5f,stroke-width:2px

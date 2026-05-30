@@ -1,0 +1,55 @@
+graph TB
+    subgraph view["视图层  Views"]
+        direction LR
+        AUTH["AuthView<br/>登录 / 注册"]
+        CHAT["ChatView<br/>聊天详情"]
+        CONTACT["ContactsView<br/>联系人"]
+        SETTINGS["SettingsView<br/>设置"]
+        EMBED["EmbedView<br/>隐写嵌入"]
+        EXTRACT["ExtractView<br/>隐写提取"]
+    end
+
+    subgraph state["状态管理层  Pinia"]
+        direction LR
+        AUTH_S["auth store<br/>认证状态"]
+        CHAT_S["chat store<br/>聊天状态"]
+        CONTACT_S["contact store<br/>联系人"]
+        WS_S["WebSocket store<br/>连接管理"]
+    end
+
+    subgraph data["数据层"]
+        direction LR
+        IDB["IndexedDB<br/>本地消息存储"]
+        DS["DataStore<br/>用户偏好"]
+        WC["Web Crypto API<br/>E2EE 加解密"]
+    end
+
+    subgraph network["网络层"]
+        direction LR
+        API["Axios<br/>REST API"]
+        WS_C["WebSocket<br/>实时通信"]
+    end
+
+    view --> state
+    state --> data
+    state --> network
+
+    style view fill:#f0f4f8,stroke:#4a6fa5,stroke-width:2px
+    style state fill:#f7f7f7,stroke:#888888,stroke-width:2px
+    style data fill:#f0f4f8,stroke:#4a6fa5,stroke-width:2px
+    style network fill:#f7f7f7,stroke:#888888,stroke-width:2px
+    style AUTH fill:#dae8fc,stroke:#4a6fa5,stroke-width:1.5px
+    style CHAT fill:#dae8fc,stroke:#4a6fa5,stroke-width:1.5px
+    style CONTACT fill:#dae8fc,stroke:#4a6fa5,stroke-width:1.5px
+    style SETTINGS fill:#dae8fc,stroke:#4a6fa5,stroke-width:1.5px
+    style EMBED fill:#dae8fc,stroke:#4a6fa5,stroke-width:1.5px
+    style EXTRACT fill:#dae8fc,stroke:#4a6fa5,stroke-width:1.5px
+    style AUTH_S fill:#e8edf2,stroke:#5a5a5a,stroke-width:1.5px
+    style CHAT_S fill:#e8edf2,stroke:#5a5a5a,stroke-width:1.5px
+    style CONTACT_S fill:#e8edf2,stroke:#5a5a5a,stroke-width:1.5px
+    style WS_S fill:#e8edf2,stroke:#5a5a5a,stroke-width:1.5px
+    style IDB fill:#d5e8d4,stroke:#6a9e5f,stroke-width:1.5px
+    style DS fill:#d5e8d4,stroke:#6a9e5f,stroke-width:1.5px
+    style WC fill:#d5e8d4,stroke:#6a9e5f,stroke-width:1.5px
+    style API fill:#fff2cc,stroke:#d6b656,stroke-width:1.5px
+    style WS_C fill:#fff2cc,stroke:#d6b656,stroke-width:1.5px

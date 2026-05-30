@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="26.0.0">
+  <diagram name="User System">
+    <mxGraphModel dx="1400" dy="1600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===== Section 1: 认证流程 ===== -->
+        <mxCell id="sec1" value="认证流程" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;html=1;rounded=1;arcSize=8;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="20" width="1340" height="220" as="geometry" />
+        </mxCell>
+
+        <!-- Register -->
+        <mxCell id="a1" value="&lt;b&gt;注册&lt;/b&gt;&#xa;用户名 + 密码" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="sec1">
+          <mxGeometry x="20" y="45" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" value="&lt;b&gt;PBKDF2&lt;/b&gt;&#xa;100K 次迭代哈希" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="sec1">
+          <mxGeometry x="230" y="45" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" value="&lt;b&gt;存储&lt;/b&gt;&#xa;users 表 + 自动生成邀请码" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="sec1">
+          <mxGeometry x="440" y="45" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ea1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=1.5;" edge="1" parent="sec1" source="a1" target="a2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=1.5;" edge="1" parent="sec1" source="a2" target="a3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Login -->
+        <mxCell id="a4" value="&lt;b&gt;登录&lt;/b&gt;&#xa;验证密码哈希" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="sec1">
+          <mxGeometry x="20" y="130" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="a5" value="&lt;b&gt;签发 JWT&lt;/b&gt;&#xa;HS256, 7 天有效期" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="sec1">
+          <mxGeometry x="230" y="130" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="a6" value="&lt;b&gt;返回 token&lt;/b&gt;&#xa;客户端本地存储" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="sec1">
+          <mxGeometry x="440" y="130" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ea3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=1.5;" edge="1" parent="sec1" source="a4" target="a5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=1.5;" edge="1" parent="sec1" source="a5" target="a6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Auth -->
+        <mxCell id="a7" value="&lt;b&gt;鉴权&lt;/b&gt;&#xa;Bearer token → /auth/me 验证" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="sec1">
+          <mxGeometry x="720" y="85" width="240" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ea5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d6b656;strokeWidth=1.5;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="sec1" source="a3" target="a7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d6b656;strokeWidth=1.5;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="sec1" source="a6" target="a7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Auth note -->
+        <mxCell id="a_note" value="每个请求携带 token&#xa;服务端中间件统一校验" style="text;html=1;fontSize=11;align=left;verticalAlign=top;fillColor=none;strokeColor=none;fontColor=#666666;" vertex="1" parent="sec1">
+          <mxGeometry x="990" y="85" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Section 2: 好友管理 ===== -->
+        <mxCell id="sec2" value="好友管理" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=14;html=1;rounded=1;arcSize=8;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="270" width="1340" height="290" as="geometry" />
+        </mxCell>
+
+        <!-- Row 1: Main flow -->
+        <mxCell id="f1" value="&lt;b&gt;邀请码查找&lt;/b&gt;&#xa;GET /invite/lookup/{code}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="sec2">
+          <mxGeometry x="20" y="45" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="f2" value="&lt;b&gt;发送好友请求&lt;/b&gt;&#xa;WS friend_request" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="sec2">
+          <mxGeometry x="300" y="45" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="f3" value="&lt;b&gt;接受 / 拒绝&lt;/b&gt;&#xa;WS accept / reject" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="sec2">
+          <mxGeometry x="560" y="45" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="f4" value="&lt;b&gt;建立好友关系&lt;/b&gt;&#xa;WS first_contact 通知" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="sec2">
+          <mxGeometry x="820" y="45" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ef1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;strokeWidth=1.5;" edge="1" parent="sec2" source="f1" target="f2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ef2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;strokeWidth=1.5;" edge="1" parent="sec2" source="f2" target="f3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ef3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;strokeWidth=1.5;" edge="1" parent="sec2" source="f3" target="f4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Row 2: Features -->
+        <mxCell id="f5" value="&lt;b&gt;离线缓存&lt;/b&gt;&#xa;好友请求暂存服务端&#xa;上线后推送" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="sec2">
+          <mxGeometry x="20" y="150" width="200" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="f6" value="&lt;b&gt;屏蔽用户&lt;/b&gt;&#xa;后续消息被过滤&#xa;黑名单持久化" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="sec2">
+          <mxGeometry x="280" y="150" width="200" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="f7" value="&lt;b&gt;pending 去重&lt;/b&gt;&#xa;同一好友请求不重复处理&#xa;accept 时恢复所有暂存消息" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="sec2">
+          <mxGeometry x="540" y="150" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="f8" value="&lt;b&gt;E2EE 密钥建立&lt;/b&gt;&#xa;accept 后双方 mkey 派生&#xa;HKDF → AES-256-GCM" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="sec2">
+          <mxGeometry x="860" y="150" width="240" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Section 3: 单端登录 ===== -->
+        <mxCell id="sec3" value="单端登录" style="swimlane;startSize=30;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=14;html=1;rounded=1;arcSize=8;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="590" width="1340" height="240" as="geometry" />
+        </mxCell>
+
+        <!-- Flow -->
+        <mxCell id="k1" value="&lt;b&gt;新设备登录&lt;/b&gt;&#xa;同一账号发起连接" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="sec3">
+          <mxGeometry x="20" y="50" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="k2" value="&lt;b&gt;服务端检测冲突&lt;/b&gt;&#xa;ws_manager 发送 kicked&#xa;给旧连接" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="sec3">
+          <mxGeometry x="300" y="45" width="240" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="k3" value="&lt;b&gt;5s 延迟&lt;/b&gt;&#xa;后台强制关闭旧连接" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;" vertex="1" parent="sec3">
+          <mxGeometry x="620" y="45" width="200" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="k4" value="&lt;b&gt;旧设备处理&lt;/b&gt;&#xa;断开 WS → Toast 提示&#xa;跳转登录页" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="sec3">
+          <mxGeometry x="900" y="45" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ek1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;strokeWidth=1.5;" edge="1" parent="sec3" source="k1" target="k2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ek2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;strokeWidth=1.5;" edge="1" parent="sec3" source="k2" target="k3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ek3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;strokeWidth=1.5;" edge="1" parent="sec3" source="k3" target="k4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Row 2: Data cleanup -->
+        <mxCell id="k5" value="&lt;b&gt;主动 logout&lt;/b&gt;&#xa;清除所有本地数据&#xa;token + 聊天记录 + 联系人" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="sec3">
+          <mxGeometry x="200" y="150" width="280" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="k6" value="&lt;b&gt;被挤掉线&lt;/b&gt;&#xa;仅清除 token&#xa;保留聊天记录和联系人" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="sec3">
+          <mxGeometry x="600" y="150" width="280" height="65" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

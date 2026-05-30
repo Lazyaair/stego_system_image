@@ -1,0 +1,12 @@
+stateDiagram-v2
+    [*] --> sending : 发送消息
+    sending --> sent : 服务器确认接收
+    sending --> failed : 发送失败或超时
+    sent --> delivered : 接收方已收到推送
+    delivered --> read : 接收方已读
+
+    sending --> [*]
+    sent --> [*]
+    delivered --> [*]
+    read --> [*]
+    failed --> [*]

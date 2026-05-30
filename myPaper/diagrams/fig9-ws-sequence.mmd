@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant C as 客户端
+    participant S as 服务器
+
+    rect rgb(240, 244, 248)
+    Note over C,S: 普通消息收发
+    C->>S: chat（消息内容 + 接收者 ID）
+    S->>S: 存入数据库 / 转发
+    S-->>C: delivered（送达确认）
+    C->>S: read（已读回执）
+    S-->>C: ack（确认）
+    end
+
+    rect rgb(247, 247, 247)
+    Note over C,S: 好友请求
+    C->>S: friend_request（请求 + 验证信息）
+    S->>S: 去重检查 + 存储
+    S-->>C: ack（确认）
+    S-->>C: friend_request（推送给对方）
+    end
+
+    rect rgb(240, 244, 248)
+    Note over C,S: 正在输入
+    C->>S: typing（正在输入状态）
+    S-->>C: typing（推送给对方）
+    end
